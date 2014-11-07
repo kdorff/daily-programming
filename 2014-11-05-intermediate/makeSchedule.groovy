@@ -105,7 +105,7 @@ class Schedule {
         sortedDays.each { day->
             println day
             dayToIntervals[day].each { interval ->
-                println "    ${interval} : ${intervalToTask[interval]}"
+                println "    ${formatInterval(interval)} : ${intervalToTask[interval]}"
             }
         }
 
@@ -117,7 +117,36 @@ class Schedule {
     }
 
     /**
+     * Nice print of interval.
+     * @param interval the interval to prety print
+     */
+     def formatInterval(interval) {
+        def start = interval.start
+        def end = interval.end
+        "${d2(start.hourOfDay)}:${d2(start.minuteOfHour)} to ${d2(end.hourOfDay)}:${d2(end.minuteOfHour)}"
+     }
+
+    /**
+     * Nice print 2 digit number (0 padded).
+     * @param number
+     * @return pretty print 2 digit number
+     */
+    def d2(number) {
+        String.format("%02d", number)
+    }
+
+    /**
+     * Nice print 4 digit number (0 padded).
+     * @param number
+     * @return pretty print 4 digit number
+     */
+    def d4(number) {
+        String.format("%04d", number)
+    }
+
+    /**
      * Schedule is complete. Obtain stats.
+     * @param dayToIntervals map of day to list of intervals for that day
      */
     def obtainStats(dayToIntervals) {
         def stats = [:]
@@ -176,9 +205,9 @@ class Schedule {
             sched.endHour += (endAmpm == "PM" && sched.endHour < 12 ? 12 : 0)
             sched.endMinute = endMinute as Integer
             sched.event = event
-            sched.mapKey = "${String.format("%04d", sched.year)}-" + 
-                            "${String.format("%02d", sched.month)}-" + 
-                            "${String.format("%02d", sched.day)}"
+            sched.mapKey = "${d4(sched.year)}-" + 
+                            "${d2(sched.month)}-" + 
+                            "${d2(sched.day)}"
             sched.start = new DateTime(sched.year, sched.month, sched.day, sched.startHour, sched.startMinute)
             sched.end = new DateTime(sched.year, sched.month, sched.day, sched.endHour, sched.endMinute)
             sched.interval = new Interval(sched.start, sched.end)
