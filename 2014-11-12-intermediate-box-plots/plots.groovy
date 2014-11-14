@@ -67,7 +67,7 @@ import java.awt.*
 import java.awt.image.*
 import javax.imageio.ImageIO
 
-
+// Kick things off
 new Plots().exec([
     1:"""
     7 12 21 28 28 29 30 32 34 35 35 36 38 39 40 40 42 44
@@ -83,38 +83,46 @@ new Plots().exec([
 
 public class Plots {
 
+    // Define the output size (png file)
     def plotSize = [w:800, h:100, margin:100, boxHeight:50]
 
+    /**
+     * Maint method, process all datasets.
+     * @param dataSets a map of label to string formatted dataset
+     */
     def exec(dataSets) {
         dataSets.each { label, dataSet ->
             execOne(label, dataSet)
         }
     }
 
+    /**
+     * Process one dataset.
+     * @param label the label of the dataset
+     * @param dataSetStr the dataset in a string (whitespace
+     * seperated int values)
+     */
     def execOne(label, dataSetStr) {
+        // Convert the dataset into a sorted list of int
         def dataSet = parseDataSetStr(dataSetStr)
-        //println "dataSet.size=${dataSet.size()}"
-        def quartileIndexes = findQartileIndexes(dataSet)
-        //println "quartileIndexes=${quartileIndexes}"
-        def q1 = dataSet[quartileIndexes.q1]
-        def q2 = dataSet[quartileIndexes.q2]
-        def q3 = dataSet[quartileIndexes.q3]
-        def iqr = q3 - q1
-        def median = q2
+        // Find the quartiles of the dataset
+        def q = findQuartiles(dataSet)
 
-        def minInclusion =  q1 - 1.5 * iqr
-        def maxInclusion =  q3 + 1.5 * iqr
+        // Min and max values to keep in primary box
+        def minInclusion =  q.q1 - 1.5 * q.iqr        
+        def maxInclusion =  q.q3 + 1.5 * q.iqr
+        // Define what we know about the plot
         def plot = [:]
         plot.min = dataSet[0]
         plot.minOutliers = []
         plot.whiskersLeft = null
-        plot.q1 = q1
-        plot.median = median
-        plot.q3 = q3
+        plot.q = q
         plot.whiskersRight = null
         plot.maxOutliers = []
         plot.max = dataSet[-1]
         for (value in dataSet) {
+            // Find the outliers and the values
+            // for the whiskers
             if (value < minInclusion) {
                 plot.minOutliers << value
             } else if (plot.whiskersLeft == null) {
@@ -126,35 +134,36 @@ public class Plots {
                 plot.whiskersRight = value
             }
         }
+        // Draw the plot
         createPlot(label, plot)
     }
 
+    /**
+     * Draw the plot
+     * @param label the label for the plot (used for output filename)
+     * @param plot map of details about what to plot
+     */
     def createPlot(label, plot) {
-        println plot
+        // Setup to draw an image
         BufferedImage bi = new BufferedImage(plotSize.w, plotSize.h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D img = bi.createGraphics();
-
         def font = new Font("TimesRoman", Font.BOLD, 10);
         img.setFont(font)
         def fontMetrics = img.getFontMetrics()
-        img.setPaint(Color.black)
-        /*
-        String message = "www.java2s.com!";
-        int stringWidth = fontMetrics.stringWidth(message);
-        int stringHeight = fontMetrics.getAscent();
-        img.drawString(message, (plotSize.w - stringWidth) / 2, plotSize.h / 2 + stringHeight / 4);
-        */
+
         // Range of actual values
         def rangeSize = plot.max - plot.min
         // Where to start drawing
         def leftStart = plotSize.margin
         def topStart = plotSize.margin
-        // Inside margins width
+        // Inside width and hight we are drawing, omitting margins
         def innerWidth = plotSize.w - (plotSize.margin * 2)
         def innerHeight = plotSize.h - (plotSize.margin * 2)
         // Number of pixels per data unit
         def pixPerUnit = innerWidth / rangeSize
+        // How tall text should be
         def textHeight = fontMetrics.getAscent()
+        // Top of centered (top to bottom) text
         def centerTextTop = plotSize.h / 2 + textHeight / 4
 
         // Left outliers
@@ -170,36 +179,36 @@ public class Plots {
             leftStart + ((plot.whiskersLeft - plot.min) * pixPerUnit), plotSize.h - plotSize.margin)
         drawLine(img, Color.black,
             leftStart + ((plot.whiskersLeft - plot.min) * pixPerUnit), plotSize.h / 2,
-            leftStart + ((plot.q1 - plot.min) * pixPerUnit), plotSize.h / 2)
+            leftStart + ((plot.q.q1 - plot.min) * pixPerUnit), plotSize.h / 2)
         drawText(img, Color.blue,
             "${plot.whiskersLeft}",
             leftStart + ((plot.whiskersLeft - plot.min) * pixPerUnit) + 5, centerTextTop - 5)
 
         // Primary box
         drawRect(img, Color.black,
-            leftStart + ((plot.q1 - plot.min) * pixPerUnit), plotSize.h / 4,
-            ((plot.q3 - plot.q1) * pixPerUnit), plotSize.h / 2);
+            leftStart + ((plot.q.q1 - plot.min) * pixPerUnit), plotSize.h / 4,
+            ((plot.q.q3 - plot.q.q1) * pixPerUnit), plotSize.h / 2);
         drawText(img, Color.blue,
-            "${plot.q1}",
-            leftStart + ((plot.q1 - plot.min) * pixPerUnit) + 5, centerTextTop - 5)
+            "${plot.q.q1}",
+            leftStart + ((plot.q.q1 - plot.min) * pixPerUnit) + 5, centerTextTop - 5)
         drawText(img, Color.blue,
-            "${plot.q3}",
-            leftStart + ((plot.q3 - plot.min) * pixPerUnit) + 5, centerTextTop - 5)
+            "${plot.q.q3}",
+            leftStart + ((plot.q.q3 - plot.min) * pixPerUnit) + 5, centerTextTop - 5)
 
         // Median
         drawLine(img, Color.black,
-            leftStart + ((plot.median - plot.min) * pixPerUnit), plotSize.h / 4,
-            leftStart + ((plot.median - plot.min) * pixPerUnit), (plotSize.h / 4) + (plotSize.h / 2))
+            leftStart + ((plot.q.q2 - plot.min) * pixPerUnit), plotSize.h / 4,
+            leftStart + ((plot.q.q2 - plot.min) * pixPerUnit), (plotSize.h / 4) + (plotSize.h / 2))
         drawText(img, Color.blue,
-            "${plot.median}",
-            leftStart + ((plot.median - plot.min) * pixPerUnit) + 5, centerTextTop - 5)
+            "${plot.q.q2}",
+            leftStart + ((plot.q.q2 - plot.min) * pixPerUnit) + 5, centerTextTop - 5)
 
         // Right whiskers
         drawLine(img, Color.black,
             leftStart + ((plot.whiskersRight - plot.min) * pixPerUnit), plotSize.margin,
             leftStart + ((plot.whiskersRight - plot.min) * pixPerUnit), plotSize.h - plotSize.margin)
         drawLine(img, Color.black,
-            leftStart + ((plot.q3 - plot.min) * pixPerUnit), plotSize.h / 2,
+            leftStart + ((plot.q.q3 - plot.min) * pixPerUnit), plotSize.h / 2,
             leftStart + ((plot.whiskersRight - plot.min) * pixPerUnit), plotSize.h / 2)
         drawText(img, Color.blue,
             "${plot.whiskersRight}",
@@ -213,39 +222,54 @@ public class Plots {
                 centerTextTop)
         }
 
-
+        // Write the image to disc
         ImageIO.write(bi, "PNG", new File("plot-${label}.png"));
     }
 
+    /**
+     * Draw text on the image.
+     */
     def drawText(img, color, text, x, y) {
-        println "Drawing ${text} at ${x}, ${y}"
         img.setPaint(color)
         img.drawString(text, x as Integer, y as Integer)
     }
 
+    /**
+     * Draw a line on the image.
+     */
     def drawLine(img, color, x1, y1, x2, y2) {
-        println "Drawing ${x1}, ${y1} -> ${x2}, ${y2}"
         img.setPaint(color)
         img.drawLine(x1 as Integer, y1 as Integer, x2 as Integer, y2 as Integer)
     }
 
+    /**
+     * Draw a rectangle on the image.
+     */
     def drawRect(img, color, x, y, w, h) {
-        println "Drawing ${x}, ${y} w= ${x} h=${h}"
         img.setPaint(color)
         img.drawRect(x as Integer, y as Integer, w as Integer, h as Integer)
     }
 
+    /**
+     * Convert the data set in string to a sorted list of int values.
+     * @param dateSetStr string, space separated int values
+     * @param return sorted list of in values
+     */
     def parseDataSetStr(dataSetStr) {
         dataSetStr.trim().split("[ ]+").collect { it as Integer }.sort()
     }
 
-    def findQartileIndexes(dataSet) {
-        def indexes = [:]
+    /**
+     * Find the quartiles.
+     */
+    def findQuartiles(dataSet) {
+        def q = [:]
         int size = dataSet.size()
-        // -1 because indexes are 0 based
-        indexes.q1 = (Math.ceil(size/4) as Integer) - 1
-        indexes.q2 = (Math.ceil(size*2/4) as Integer) - 1
-        indexes.q3 = (Math.ceil(size*3/4) as Integer) - 1
-        indexes
+        // -1 because quartiles are 0 based
+        q.q1 = dataSet[(Math.ceil(size/4) as Integer) - 1]
+        q.q2 = dataSet[(Math.ceil(size*2/4) as Integer) - 1]
+        q.q3 = dataSet[(Math.ceil(size*3/4) as Integer) - 1]
+        q.iqr = q.q3 - q.q1
+        q
     }
 }
