@@ -228,6 +228,11 @@ public class Plots {
 
     /**
      * Draw text on the image.
+     * @param img image to draw to
+     * @param color the color to draw
+     * @param text text to draw
+     * @param x x coordinate
+     * @param y y coordinate
      */
     def drawText(img, color, text, x, y) {
         img.setPaint(color)
@@ -236,6 +241,12 @@ public class Plots {
 
     /**
      * Draw a line on the image.
+     * @param img image to draw to
+     * @param color the color to draw
+     * @param x1 x1 coordinate
+     * @param y1 y1 coordinate
+     * @param x2 x2 coordinate
+     * @param y2 y2 coordinate
      */
     def drawLine(img, color, x1, y1, x2, y2) {
         img.setPaint(color)
@@ -244,6 +255,12 @@ public class Plots {
 
     /**
      * Draw a rectangle on the image.
+     * @param img image to draw to
+     * @param color the color to draw
+     * @param x x coordinate
+     * @param y y coordinate
+     * @param w width
+     * @param h height
      */
     def drawRect(img, color, x, y, w, h) {
         img.setPaint(color)
@@ -253,7 +270,7 @@ public class Plots {
     /**
      * Convert the data set in string to a sorted list of int values.
      * @param dateSetStr string, space separated int values
-     * @param return sorted list of in values
+     * @return sorted list of in values
      */
     def parseDataSetStr(dataSetStr) {
         dataSetStr.trim().split("[ ]+").collect { it as Integer }.sort()
@@ -261,6 +278,8 @@ public class Plots {
 
     /**
      * Find the quartiles.
+     * @param dataSet the sorted list of ints
+     * @return quartiles, stored in a map, of the sorted list of ints
      */
     def findQuartiles(dataSet) {
         def q = [:]
