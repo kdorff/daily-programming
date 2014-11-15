@@ -146,20 +146,24 @@ class Arrows {
         def grid = parseGridStr(gridStr)
         showGrid(grid)
         def maxPath = [len: 0, path: []]
+        def allVisited = []
+        def searched = 0
         for (r in 0..<(grid.h)) {
             for (c in 0..<(grid.w)) {
                 def pathPos = [r: r, c: c]
-                if (!maxPath.path.contains(pathPos)) {
+                if (!allVisited.contains(pathPos)) {
                     // If the largest path didn't contain this position
                     // check the path
+                    searched++
                     def lenMap = pathLength(grid, pathPos)
-                    if (lenMap.len > maxPath.len) {
+                    if (lenMap.keep && lenMap.len > maxPath.len) {
                         maxPath = lenMap
                     }
+                    allVisited.addAll maxPath.path
                 }
             }
         }
-        println "Size of path is ${maxPath.len}"
+        println "Size of path is ${maxPath.len}, searched ${searched} paths"
         showGrid(grid, maxPath)
     }
 
@@ -190,15 +194,7 @@ class Arrows {
                 lastPos = pos
             }
         }
-        if (lastPos == startPos) {
-            // We connected back to the start of the path,
-            // keep this path.
-            [len: len, path: visited]
-        } else {
-            // We connected back to the middle of the path,
-            // disregard this path.
-            [len: -1, path: null]
-        }
+        [len: len, path: visited, keep: lastPos == startPos]
     }
 
     /**
