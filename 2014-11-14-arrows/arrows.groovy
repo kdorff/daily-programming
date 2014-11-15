@@ -156,10 +156,12 @@ class Arrows {
                     // check the path
                     searched++
                     def lenMap = pathLength(grid, pathPos)
-                    if (lenMap.keep && lenMap.len > maxPath.len) {
-                        maxPath = lenMap
+                    if (lenMap.keep) {
+                        if (lenMap.len > maxPath.len) {
+                            maxPath = lenMap
+                        }
+                        allVisited.addAll maxPath.path
                     }
-                    allVisited.addAll maxPath.path
                 }
             }
         }
@@ -237,6 +239,7 @@ class Arrows {
         grid.w = w as Integer
         grid.h = h as Integer
         grid.rows = gridList
+        grid.counts = new int[grid.h][grid.w]
         grid
     }
 
@@ -247,6 +250,7 @@ class Arrows {
      * @param pos the position
      */
     def cellValue(grid, pos) {
+        grid.counts[pos.r][pos.c]++
         grid.rows[pos.r][pos.c]
     }
 
