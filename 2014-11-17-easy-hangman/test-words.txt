@@ -1,0 +1,6 @@
+# This list of 5000 common english words comes from:
+# https://www.englishclub.com/vocabulary/common-words-5000.htm
+# hard
+the
+and
+have
