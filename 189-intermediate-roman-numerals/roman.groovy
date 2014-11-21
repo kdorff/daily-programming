@@ -5,10 +5,14 @@ value = [
     'M': 1000,
 ]
 
-def romanMatcher = ~/^(\([()IVXLCDM]+\))?([IVXLCDM]+)/
+// Format for roman numerals including the
+// () notation where values are multiplied * 1000 for
+// each nesting depth.
+romanMatcher = ~/^(\([()IVXLCDM]+\))?([IVXLCDM]*)$/
 
 // Input data with expected value
-['IIX': -1, 'IV': 4, 'VI': 6, 
+['IIX': -1, 'IIB': -1,
+ 'IV': 4, 'VI': 6, 
  'XII': 12, 'MDCCLXXVI': 1776, 'IX': 9, 'XCIV':94,
  'IV' : 4, 'XXXIV' : 34, 'CCLXVII' : 267, 'DCCLXIV' : 764, 
  'CMLXXXVII' : 987, 'MCMLXXXIII' : 1983, 'MMXIV' : 2014, 
@@ -42,27 +46,16 @@ def parseRomanNumerals(roman, multiplier) throws IllegalArgumentException {
     int total = 0
     int numSmaller
     int largestValue
-    StringBuilder subValue = new StringBuilder()
-    int nestDepth = 0
     int subTotal = 0
-
-    // Iterate over the roman number value in reverse
-    roman.reverse().each { letter ->
-        if (nestDepth > 0 || letter == ')') {
-            // Collect the sub-ruman number that is 1000x greater
-            if (letter == ')') { 
-                nestDepth++ 
-            } else if (letter == '(') { 
-                nestDepth-- 
-            }
-            subValue << letter
-            if (nestDepth == 0 && subValue.size() > 0) {
-                String subParse = subValue.reverse()[1..-2]
-                subTotal = parseRomanNumerals(
-                    subParse, multiplier * 1000)
-                subValue.length = 0
-            }
-        } else {
+    boolean matched = false
+    roman.find(romanMatcher) { whole, subMatch, toParse ->
+        matched = true
+        if (subMatch) {
+            subTotal = parseRomanNumerals(
+                // Sub-parse without enclosing parens
+                subMatch[1..-2], multiplier * 1000)
+        }
+        toParse.reverse().each { letter ->
             Integer curValue = value[letter]
             if (curValue == null) {
                 throw new IllegalArgumentException(
@@ -83,6 +76,10 @@ def parseRomanNumerals(roman, multiplier) throws IllegalArgumentException {
                 largestValue = curValue
             }
         }
+    } 
+    if (!matched) {
+        throw new IllegalArgumentException(
+            "Invalid roman numeral ${roman}")
     }
     (total * multiplier) + subTotal
 }
