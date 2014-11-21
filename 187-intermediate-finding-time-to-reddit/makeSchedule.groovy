@@ -208,8 +208,10 @@ class Schedule {
             sched.mapKey = "${d4(sched.year)}-" + 
                             "${d2(sched.month)}-" + 
                             "${d2(sched.day)}"
-            sched.start = new DateTime(sched.year, sched.month, sched.day, sched.startHour, sched.startMinute)
-            sched.end = new DateTime(sched.year, sched.month, sched.day, sched.endHour, sched.endMinute)
+            sched.start = new DateTime(sched.year, sched.month, sched.day, 
+                sched.startHour, sched.startMinute)
+            sched.end = new DateTime(sched.year, sched.month, sched.day, 
+                sched.endHour, sched.endMinute)
             sched.interval = new Interval(sched.start, sched.end)
         }
         sched
