@@ -11,7 +11,7 @@ value = [
 romanMatcher = ~/^(\([()IVXLCDM]+\))?([IVXLCDM]*)$/
 
 // Input data with expected value
-['IIX': -1, 'IIB': -1,
+['IIX': -1, 'IIB': -1, "()V()V": -1,
  'IV': 4, 'VI': 6, 
  'XII': 12, 'MDCCLXXVI': 1776, 'IX': 9, 'XCIV':94,
  'IV' : 4, 'XXXIV' : 34, 'CCLXVII' : 267, 'DCCLXIV' : 764, 
@@ -32,7 +32,7 @@ romanMatcher = ~/^(\([()IVXLCDM]+\))?([IVXLCDM]*)$/
         print "${roman} = ${value} expecting ${expected} "
         println "(${expected == value ? true : false})"
     } catch (IllegalArgumentException e) {        
-        print "${e.message} "
+        print "${roman} ${e.message} "
         println "(${expected == -1 ? true : false})"
     }
 }
@@ -45,41 +45,47 @@ romanMatcher = ~/^(\([()IVXLCDM]+\))?([IVXLCDM]*)$/
 def parseRomanNumerals(roman, multiplier) throws IllegalArgumentException {
     int total = 0
     int numSmaller
-    int largestValue
+    int largestValue = 0
     int subTotal = 0
     boolean matched = false
     roman.find(romanMatcher) { whole, subMatch, toParse ->
+        // Regex match for roman numeral. Doesn't mean it's valid
+        // but it contains the rights characters
         matched = true
         if (subMatch) {
+            // We have an embedded roman number (within ()'s)
+            // Recurse to parse the new value at a 1000x multiplier
             subTotal = parseRomanNumerals(
                 // Sub-parse without enclosing parens
                 subMatch[1..-2], multiplier * 1000)
         }
+        // Iterate in reverse order
         toParse.reverse().each { letter ->
-            Integer curValue = value[letter]
-            if (curValue == null) {
-                throw new IllegalArgumentException(
-                    "Invalid roman numeral digit ${letter} in ${roman}")
-            }
-            if (largestValue && largestValue > curValue) {
-                total -= curValue
+            int currentValue = value[letter]
+            if (largestValue && largestValue > currentValue) {
+                // Subtract a smaller value from the total
+                // Such as the I in IX subtracts 1 from the total
+                total -= currentValue
                 numSmaller++
                 if (numSmaller > 1) {
+                    // But we can only do this once.
                     throw new IllegalArgumentException(
                         "Invalid roman numeral ${roman}")
                 }
             } else {
-                total += curValue
+                // We have a larger or equal value than before. Add to total
+                total += currentValue
                 numSmaller = 0
             }
-            if (largestValue < curValue) {
-                largestValue = curValue
+            if (largestValue < currentValue) {
+                // New largest value
+                largestValue = currentValue
             }
         }
     } 
     if (!matched) {
-        throw new IllegalArgumentException(
-            "Invalid roman numeral ${roman}")
+        // Regex didn't match. Bad roman numeral string
+        throw new IllegalArgumentException("Invalid roman numeral ${roman}")
     }
     (total * multiplier) + subTotal
 }
