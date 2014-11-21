@@ -1,0 +1,8 @@
+Meeting agenda 2014-11-20
+
+1. Welcome
+2. Everybody find the challenges OK? Time to work on them?
+3. What languages?
+4. Tools: Dropbox, Github, Sublime/Atom
+5. What challenges did people do? How did it go?
+6. Questions, review people's work, etc.
