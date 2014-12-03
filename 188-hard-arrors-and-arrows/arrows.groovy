@@ -111,7 +111,6 @@ new Arrows().exec([
     ^^^^<^<>^^vvv>v^<<>><^<<v>^<<v>>><>>><<^^>vv>
     <^<^<>vvv^v><<<vvv<>>>>^<<<^vvv>^<<<^vv>v^><^
     """
-
 ])
 
 /**
@@ -126,6 +125,7 @@ class Arrows {
         '<': [r:  0, c: -1],
         '>': [r:  0, c: +1]
     ]
+
     /**
      * Main method
      * @param gridStrs list of strings, which are the datasets (one per string).
