@@ -26,26 +26,19 @@ negativeWords = [
     'moron', 'troll']
 
 // Kick off execution
-exec()
+inputs.each { checkUrl ->
+    def url = commentsBaseUrl.replaceAll("_URL_", checkUrl)
+    def data = new URL(url).text.toLowerCase()
 
-/**
- * Primary execution method. Parse all inputs.
- */
-def exec() {
-    inputs.each { checkUrl ->
-        def url = commentsBaseUrl.replaceAll("_URL_", checkUrl)
-        def data = new URL(url).text.toLowerCase()
-
-        def allFeelings = [positives: 0, negatives: 0]
-        data.findAll(commentPattern) { whole, comment ->
-            parseComment(comment, allFeelings)
-        }
-
-        // Convert allFeelings to a human readable string and output
-        def overallFeelings = feelingsToHuman(allFeelings)
-        println "Comments for ${checkUrl} are overall ${overallFeelings}"
-        println allFeelings
+    def allFeelings = [positives: 0, negatives: 0]
+    data.findAll(commentPattern) { whole, comment ->
+        parseComment(comment, allFeelings)
     }
+
+    // Convert allFeelings to a human readable string and output
+    def overallFeelings = feelingsToHuman(allFeelings)
+    println "Comments for ${checkUrl} are overall ${overallFeelings}"
+    println allFeelings
 }
 
 /**
