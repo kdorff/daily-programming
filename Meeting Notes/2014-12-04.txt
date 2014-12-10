@@ -1,0 +1,10 @@
+Meeting agenda 2014-12-04
+
+1. Welcome
+2. Everybody find the challenges OK? Time to work on them?
+3. What challenges did people do? How did it go? What languages?
+4. Questions, review people's work, etc.
+
+Easy:         http://www.reddit.com/r/dailyprogrammer/comments/2mlfxp/20141117_challenge_189_easy_hangman/
+Intermediate: http://www.reddit.com/r/dailyprogrammer/comments/2ms946/20141119_challenge_189_intermediate_roman_numeral/
+Hard:         http://www.reddit.com/r/dailyprogrammer/comments/2m82yz/20141114_challenge_188_hard_arrows_and_arrows/
