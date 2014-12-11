@@ -127,7 +127,7 @@ new SpaceProbe().exec()
 class SpaceProbe {
     def rand = new Random()
     /** The size of the grid gridSize x gridSize. */
-    def gridSize = 15
+    def gridSize = 50
     /** The grid of space we need to traverse. */
     def space = new char[gridSize][gridSize]
     /** Positions we know cannot be visited, optimization. */
