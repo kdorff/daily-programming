@@ -127,7 +127,7 @@ new SpaceProbe().exec()
 class SpaceProbe {
     def rand = new Random()
     /** The size of the grid gridSize x gridSize. */
-    def gridSize = 50
+    def gridSize = 25
     /** The grid of space we need to traverse. */
     def space = new char[gridSize][gridSize]
     /** Positions we know cannot be visited, optimization. */
@@ -159,7 +159,7 @@ class SpaceProbe {
     /** If we get debug output */
     def debugOn = false
     /** If we want the calcuation to be visual */
-    def visualCalculation = false
+    def visualCalculation = true
     /** If we get simpler progress output to see that we're working */
     def progressOn = false
     /** How many complete paths we've found */

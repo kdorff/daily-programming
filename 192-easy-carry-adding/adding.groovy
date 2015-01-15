@@ -13,68 +13,71 @@ def eq = new Equation()
  */
 class Equation {
     /** 2d array of int's to hold input and output data. */
-    def valuesGrid
+    def values
     /* The widest size of the input numbers. */
     def maxNumSize
-    /* The number of input numbers. */
-    def numValues
-    /* The index of the result row. */
-    def resultRow
-    /* The index of the carries row. */
-    def carriesRow
+    /* int array of values for the result, one digit per slot. */
+    def results
+    /* int array of values for the carries, one digit per slot */
+    def carries
 
     /**
      * Setup the grid for calculation given the input equation of 
      * integer additions.
      * @param eqStr the equation of integer additions as a string
      */
-    def setupGrid(eqStr) {
-        // Convert numbers to ints and back to strings, values
-        // will contain a list of strings that are int values
-        // If an incoming int value was '095', just '95' will
-        // be stored in the list.
-        def strValues = (eqStr.trim().split('[+]') as List).collect { "${it.trim() as Integer}" }
-        numValues = strValues.size()
+    def setup(eqStr) {
+        // Convert the equation to a list of ints
+        values = (eqStr.split('[+]') as List).collect { it as Integer }
         // Find the maximum length
-        maxNumSize = strValues.inject(0) { maxSize, number -> 
-            Math.max(maxSize, number.size()) 
+        maxNumSize = values.inject(0) { maxSize, number -> 
+            Math.max(maxSize, numDigits(number) + 1) 
         }
-        resultRow = numValues
-        carriesRow = numValues + 1
-        valuesGrid = new int[numValues + 2][maxNumSize + 1]
-        populateInputs(strValues)
+        results = new int[maxNumSize]
+        carries = new int[maxNumSize]
     }
 
-    /**
-     * Populate the incoming values onto the grid.
-     * @param strValues list of string integers.
-     */
-    def populateInputs(strValues) {
-        strValues.eachWithIndex { numberStr, r ->
-            int numWidth = numberStr.size()
-            int c = maxNumSize + 1 - numWidth
-            numberStr.each { digit ->
-                valuesGrid[r][c++] = digit as Integer
-            }
+    int numDigits(number) {
+        int digits = 0
+        if (number <= 0) {
+            digits = 1
         }
+        while (number) {
+            number = Math.floor(number / 10) as Integer
+            digits++
+        }
+        digits
     }
+
     /**
      * Perform the addition calculation.
      */
     String calculate(eqStr) {
-        setupGrid(eqStr)
+        setup(eqStr)
         (maxNumSize .. 0).each { c ->
             def sum = 0
-            (0 ..< numValues).each { r ->
-                sum += valuesGrid[r][c]
+            (0 ..< values.size()).each { r ->
+                sum += valueAt(r, c)
             }
-            sum += valuesGrid[carriesRow][c]
+            sum += carries[c]
             def sumStr = "${sum}"
-            valuesGrid[resultRow][c] = sumStr[-1] as Integer
-            valuesGrid[carriesRow][c - 1] = 
-                sumStr.size() == 2 ? sumStr[0] as Integer : 0
+            results[c] = sumStr[-1] as Integer
+            carries[c - 1] =  sumStr.size() == 2 ? sumStr[0] as Integer : 0
         }
         toString()
+    }
+
+    int valueAt(r, c) {
+        def value = values[r]
+        def numDigits = numDigits(value)
+        def diffDigits = maxNumSize - numDigits
+        println "value=${value}, maxNumSize=${maxNumSize}, c=${c}, numDigits=${numDigits}, diffDigits=${diffDigits}"
+        if (c < diffDigits) {
+            0
+        } else {
+            "${value}"[c - diffDigits] as Integer
+        }
+
     }
 
     /**
@@ -83,10 +86,10 @@ class Equation {
     String toString() {
         def sb = new StringBuilder()
         def leading
-        (0 ..< numValues).each { r ->
+        (0 ..< values.size()).each { r ->
             leading = true
-            (0 ..< (maxNumSize + 1)).each { c ->
-                def value = valuesGrid[r][c]
+            (0 ..< maxNumSize).each { c ->
+                def value = valueAt(r, c)
                 leading = leading && (value == 0)
                 sb << (leading ? ' ' : value)
 
@@ -96,14 +99,14 @@ class Equation {
         sb << "-" * (maxNumSize + 1) << '\n'
         leading = true
         (0 ..< (maxNumSize + 1)).each { c ->
-            def value = valuesGrid[resultRow][c]
+            def value = results[c]
             leading = leading && (value == 0)
             sb << (leading ? ' ' : value)
         }
         sb << '\n'
         sb << "-" * (maxNumSize + 1) << '\n'
         (0 ..< (maxNumSize + 1)).each { c ->
-            def value = valuesGrid[carriesRow][c]
+            def value = carries[c]
             sb << (value == 0 ? ' ' : value)
         }
         sb.toString()

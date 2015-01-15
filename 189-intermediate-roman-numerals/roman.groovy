@@ -89,8 +89,7 @@
   * ((XV)M)DCC = ((10 + 5) * 1000 + 1000) * 1000 + 500 + 100 + 100 = (15000 + 1000) * 1000 + 1700 = 16000000 + 1700 = 16001700
   */
 
-// Roman numeral digits to their values. We'll include the valid subtractive
-// values in the list to assist with parsing and creation of roman numerals
+// Roman numeral digits to their values
 value = [
     'I':  1,    
     'IV': 4,    'V': 5,    
@@ -100,19 +99,14 @@ value = [
     'CD': 400,  'D': 500,
     'CM': 900,  'M': 1000,
 ]
-// Just the roman digits but in reverse order
 romanDigitsReverse = (value.keySet() as List).reverse()
 
-// Format for roman numerals including the () notation where values are
-// multiplied * 1000 for each nesting depth.
+// Format for roman numerals including the
+// () notation where values are multiplied * 1000 for
+// each nesting depth.
 romanMatcher = ~/^(\([()IVXLCDM]+\))?([IVXLCDM]*)$/
 
-// Count passes and fails
-int passes = 0
-int fails = 0
-// Input data with expected value. This includes the test cases from
-// reddit as well as some of my own test cases. A value of -1 means
-// I expect the parsing to fail.
+// Input data with expected value
 ['IIX': -1,   // Cannot have two smaller before larger
  'IIB': -1,   // Invalid numerals
  '()V()V': -1,  // This will initial pass regex, but is invalid
@@ -133,109 +127,27 @@ int fails = 0
  '((XV)MDCCLXXV)MMCCXVI' : 16777216, '((CCCX)MMMMCLIX)CCLXV' : 314159265, 
  '((MLXX)MMMDCCXL)MDCCCXXIV' : 1073741824, 
  ].each { romanValue, intValue ->
-    // Convert the romanValue to intValue
-    boolean passed
+    // Convert the roman romanValue 
     try {
-        int calcValue = romanNumeralsToInt(romanValue, 1)
-        passed = calcValue == intValue
-        print "${romanValue} = ${calcValue} expect ${intValue} ${passed}"
-        println "()"
+        int calculatedValue = romanNumeralsToInt(romanValue, 1)
+        print "${romanValue} = ${calculatedValue} expecting ${intValue} "
+        println "(${calculatedValue == intValue ? true : false})"
     } catch (IllegalArgumentException e) {        
-        passed = intValue == -1
         print "${roman} ${e.message} "
-        println "(${passed})"
+        println "(${intValue == -1 ? true : false})"
     }
-    if (passed) {
-        passes++
-    } else {
-        fails++
-    }
-
-    // Convert the intValue to romanValue
+    /*
     if (intValue != -1) {
-        if (!romanValue.contains("(")) {
-            // Only convert roman values that we know are valid
-            String calcValue = intToRomanNumerals(intValue)
-            passed = calcValue == romanValue
-            if (passed) {
-                passes++
-            } else {
-                fails++
-            }
-            print "${intValue} = ${calcValue} expect ${romanValue} ${passed}"
-        }
+        String calculatedValue = intToRomanNumerals(intValue)
+        print "${intValue} = ${calculatedValue} expecting ${romanValue} "
+        println "(${calculatedValue == romanValue ? true : false})" 
     }
-}
-// Final eport
-println "Number of passes = ${passes}"
-println "Number of fails =  ${fails}"
-
-/**
- * Convert a roman numeral string with a multiplier to int. This will
- * check for formatting mistakes within the roman numeral and throw
- * exceptions if they ar found.
- * @param roman the roman numeral string
- * @param multiplier the multiplier (for parens support)
- */
-def romanNumeralsToInt(roman, multiplier) throws IllegalArgumentException {
-    boolean matched = false
-    int total = 0
-    int subTotal = 0
-    roman.find(romanMatcher) { whole, subMatch, toParse ->
-        // We've matched valid looking input. Try to parse it.
-        matched = true
-        if (subMatch) {
-            // We have a sub roman number (in parens)
-            def subParse = subMatch[1..-2]
-            if (subParse.endsWith("I")) {
-                // Invalid roman numeral
-                throw new IllegalArgumentException(
-                    "Invalid roman numeral ${subParse}, multiplied values " +
-                    "cannot end in I")                
-            }
-            // Parse the sub roman numeral
-            subTotal = romanNumeralsToInt(
-                subParse, multiplier * 1000)            
-        }
-        romanDigitsReverse.each { romanToCheck ->
-            def digitValue = value[romanToCheck]
-            int repeatRomanCount = 0
-            while (toParse.startsWith(romanToCheck)) {
-                repeatRomanCount++
-                if ((romanToCheck == "M" && repeatRomanCount > 4) || 
-                    (romanToCheck != "M" && repeatRomanCount > 3)) {
-                    throw new IllegalArgumentException(
-                        "Invalid roman numeral ${roman} only 3 same " +
-                        "consecutive values allowed " + 
-                        "(except M which may have 4)")
-                }
-                // Add to the running sum then consume the parsed digits
-                // from the front of the roman numeral
-                total += digitValue
-                toParse = romanToCheck.size() < toParse.size() ? 
-                    toParse[romanToCheck.size() .. -1] : ""
-            }
-        }
-        if (toParse) {
-            // We still have unparsed roman numerals. This means a larger
-            // value follows a smaller value
-            throw new IllegalArgumentException(
-                "Invalid roman numeral ${roman}, large value " +
-                "found after smaller value")
-        }
-    }
-    if (!matched) {
-        // Regex didn't match. Bad roman numeral string
-        throw new IllegalArgumentException(
-            "Invalid roman numeral ${roman}, invalid digits?")
-    }
-    (total * multiplier) + subTotal
+    */
 }
 
 /**
  * Convert an int to a roman numeral. This does not yet handle
- * values > 4999. Really no error handling is necessary since
- * intValues is always well formed.
+ * values > 4999.
  * @param intValue the number to convert to roman numerals
  * @return number as roman numerals after conversion
  */
@@ -248,15 +160,134 @@ def intToRomanNumerals(intValue) {
         if (intValue >= scale) {
             parts[romanDigit] = Math.floor(intValue / scale) as Integer
             intValue -= parts[romanDigit] * scale
+        } else {
+            parts[romanDigit] = 0
         }
     }
-    /*
-    if (parts.M && parts.M > 4) {
-        // We don't yet handle values > 4999. I believe this is where
-        // we would handle that, perhaps?
-        parts.M = 4
+    println parts
+    if (parts['M'] > 3) {
+        parts['M'] = 3
     }
-    */
-    // Convert the parts into Roman Numeral string
-    parts.collect { k, v -> k*v }.join("")
+    splitToRoman(parts)
+}
+
+def splitToRoman(parts) {
+    def roman = new StringBuilder()
+    parts.each { digit, count ->
+      (0..<count).each {
+          roman << digit
+      }
+    }
+    roman.toString()
+}
+
+
+def romanNumeralsToInt(roman, multiplier) throws IllegalArgumentException {
+    def matched = false
+    int total = 0
+    int subTotal = 0
+    roman.find(romanMatcher) { whole, subMatch, toParse ->
+        matched = true
+        if (subMatch) {
+            def subParse = subMatch[1..-2]
+            if (subParse.endsWith("I")) {
+                throw new IllegalArgumentException(
+                    "Invalid roman numeral ${subParse}, multiplied values " +
+                    "cannot end in I")                
+            }
+            subTotal = romanNumeralsToInt(
+                // Sub-parse without enclosing parens
+                subParse, multiplier * 1000)            
+        }
+        romanDigitsReverse.each { romanToCheck ->
+            def digitValue = value[romanToCheck]
+            if (toParse.startsWith(romanToCheck)) {
+                total += digitValue
+                toParse = toParse.substring(romanToCheck.size())
+            }
+        }
+    }
+    if (!matched) {
+        // Regex didn't match. Bad roman numeral string
+        throw new IllegalArgumentException(
+            "Invalid roman numeral ${roman}, invalid digits?")
+    }
+    (total * multiplier) + subTotal
+}
+
+/**
+ * Parse a roman numeral string to an int.
+ * @param the roman numerals
+ * @param multiplier the multiplier 
+ * @return roman numerals (roman) as int
+ */
+def xromanNumeralsToInt(roman, multiplier) throws IllegalArgumentException {
+    int total = 0
+    int numSmaller
+    int largestValue = 0
+    int subTotal = 0
+    boolean matched = false
+    int consecutiveValues = 0
+    String lastValue = null
+    roman.find(romanMatcher) { whole, subMatch, toParse ->
+        // Regex match for roman numeral. Doesn't mean it's valid
+        // but it contains the rights characters
+        matched = true
+        if (subMatch) {
+            // We have an embedded roman number (within ()'s)
+            // Recurse to parse the new value at a 1000x multiplier
+            def subParse = subMatch[1..-2]
+            if (subParse.endsWith("I")) {
+                throw new IllegalArgumentException(
+                    "Invalid roman numeral ${subParse}, multiplied values " +
+                    "cannot end in I")                
+            }
+            subTotal = romanNumeralsToInt(
+                // Sub-parse without enclosing parens
+                subMatch[1..-2], multiplier * 1000)
+        }
+        // Iterate in reverse order
+        toParse.reverse().each { letter ->
+            int currentValue = value[letter]
+            if (largestValue && largestValue > currentValue) {
+                // Subtract a smaller value from the total
+                // Such as the I in IX subtracts 1 from the total
+                total -= currentValue
+                numSmaller++
+                if (numSmaller > 1) {
+                    // But we can only do this once.
+                    throw new IllegalArgumentException(
+                        "Invalid roman numeral ${roman}, too many smaller " +
+                        "values after a larger value (only one allowed).")
+                }
+            } else {
+                // We have a larger or equal value than before. Add to total
+                total += currentValue
+                numSmaller = 0
+            }
+            if (lastValue && lastValue == letter) {
+                consecutiveValues++
+                if ((letter == "M" && consecutiveValues > 3) || 
+                    (letter != "M" && consecutiveValues > 2)) {
+                    throw new IllegalArgumentException(
+                        "Invalid roman numeral ${roman} only 3 same " +
+                        "consecutive values allowed " + 
+                        "(except M which may have 4)")
+                }
+            } else {
+                consecutiveValues = 0
+            }
+            if (largestValue < currentValue) {
+                // New largest value
+                largestValue = currentValue
+            }
+            lastValue = letter
+        }
+    } 
+    if (!matched) {
+        // Regex didn't match. Bad roman numeral string
+        throw new IllegalArgumentException(
+            "Invalid roman numeral ${roman}, invalid digits?")
+    }
+    (total * multiplier) + subTotal
 }
