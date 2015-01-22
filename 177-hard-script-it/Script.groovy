@@ -42,11 +42,8 @@ class ScriptStats {
         scenes = []
         currentScene = null
         while (processNextLine()) {}
-        collateStats()
-    }
-
-    def collateStats() {
-        allScenes = SceneUtil.collateFrom(new Scene("whole script"), scenes)
+        // Collate per-scene details into whole-script details
+        allScenes = SceneUtil.collateFrom(new Scene("whole-script"), scenes)
     }
 
     /**
