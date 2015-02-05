@@ -121,6 +121,8 @@ class Scene {
     Pattern directionPattern = ~/^\[.*\]$/
     /** Regex to match spoken text including a character name. */
     Pattern spokenLinePattern = ~/^([A-Z0-9#? ]+):\s+(.*)$/
+    final static int MATCH_IDX_CHARACTER = 1
+    final static int MATCH_IDX_DIALOG = 2
 
     /**
      * Contructor to process a new scene.
@@ -183,8 +185,8 @@ class Scene {
                 def matcher =  line =~ spokenLinePattern
                 if (matcher.matches()) {
                     // This line of dialog contains the current speakers name
-                    changeCharacter matcher[0][1]
-                    observeSpokenLine matcher[0][2]
+                    changeCharacter matcher[0][MATCH_IDX_CHARACTER]
+                    observeSpokenLine matcher[0][MATCH_IDX_DIALOG]
                 } else {
                     // This line of dialog is a still the previous speaker
                     observeSpokenLine line   

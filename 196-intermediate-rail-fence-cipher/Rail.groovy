@@ -1,30 +1,70 @@
 /**
  * Class to exercise RailCryptor rail encryption/decryption.
  */
-class Rail {
+class Rail extends GroovyTestCase {
+
+    def word = "I Love kittens."
+
     /**
-     * Kick it all off.
+     * Test with a rail of -1.
      */
-    public static void main(String[] args) {
-        new Rail().exec()
+    void testNeg1() {
+        shouldFail {
+            performTestOnN(-1, word)
+        }
     }
 
     /**
-     * Exercise the rail encrypted / decryptor.
+     * Test with a rail of 0.
      */
-    def exec() {
-        // Test encrypting and decrypting to make sure we end up with the
-        // same value we started with.
-        def word = "I love kittens."
-        def railHeight = 3
+    void test0() {
+        shouldFail {
+            performTestOnN(0, word)
+        }
+    }
 
-        // The RailCryptor is unique per rail height and word size
+    /**
+     * Test with a rail of 1.
+     */
+    void test1() {
+        shouldFail {
+            performTestOnN(1, word)
+        }
+    }
+
+    /**
+     * Test with a rail of 2.
+     */
+    void test2() {
+        performTestOnN(2, word)
+    }
+
+    /**
+     * Test with a rail of 3.
+     */
+    void test3() {
+        performTestOnN(3, word)
+    }
+
+    /**
+     * Test with a rail of 4.
+     */
+    void test4() {
+        performTestOnN(4, word)
+    }
+
+    /**
+     * Test with a rail of 5.
+     */
+    void test5() {
+        performTestOnN(5, word)
+    }
+
+    def performTestOnN(int railHeight, String word) {
         def crypt = new RailCryptor(railHeight, word.size())
         def encrypted = crypt.encrypt(word)
-        println "Encrypted word=${word} to ${encrypted}"
         def decrypted = crypt.decrypt(encrypted)
-        println "Decrypted word=${encrypted} to ${decrypted}"
-        assert word == decrypted
+        assert word == decrypted        
     }
 }
 
@@ -94,8 +134,6 @@ class RailCryptor {
         }
         result.toString()
     }
-
-
 }
 
 /*
