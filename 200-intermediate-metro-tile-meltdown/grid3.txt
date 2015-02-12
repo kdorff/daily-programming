@@ -1,0 +1,16 @@
+10 10
+..........
+.@@@@@.ss.
+.@@@@@.ss.
+.......ss.
+.\\\\\.ss.
+.\\\\\....
+.\\\\\.\\.
+.......\\.
+./////.\\.
+..........
+#5×2 tile of character '@' located at (1,1)
+#5×3 tile of character '\' located at (1,4)
+#5×1 tile of character '/' located at (1,8)
+#2×4 tile of character 's' located at (7,1)
+#2×3 tile of character '\' located at (7,6)

@@ -1,0 +1,11 @@
+6 6
+......
+.xx.z.
+.xx...
+...yy.
+.z.yy.
+......
+#2×2 tile of character 'x' located at (1,1)
+#1×1 tile of character 'z' located at (1,4)
+#2×2 tile of character 'y' located at (3,3)
+#1×1 tile of character 'z' located at (4,1)
