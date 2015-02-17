@@ -10,19 +10,26 @@ import groovy.transform.EqualsAndHashCode
 import java.nio.charset.Charset
 
 /**
- * TODO: Fix line of sight. The issue is that when one is close to a wall,
- *       the angle of the line (ray trace) is too oblique because of the
- *       low resolution and therefore line of site returns false when
- *       sometimes it really should be true. Probably not easily fixable.
- * 
- * Done:
+ * Implementation of reddit daily programmer challenge 179 hard
+ * http://www.reddit.com/r/dailyprogrammer/comments/2g7ucz/9122014_challenge_179_hard_traveller_game_part_2/
+ *
+ * Done
+ * ------------
  * Place Traps
  * Place Torches
  * Degrade torch, one level per two turns (minimum torch?)
  * Draw random inner walls
+ *
+ * Won't fix?
+ * ------------
+ * * Fix line of sight. The issue is that when one is close to a wall,
+ *   the angle of the line (ray trace) is too oblique because of the
+ *   low resolution and therefore line of site returns false when
+ *   sometimes it really should be true. Probably not easily fixable.
  */
 class Traveller2 {
 
+    /** Constants. */
     final static int NUMBER_OF_TURNS = 100
     final static int NUMBER_OF_TREASURES = 100
     final static int NUMBER_OF_PITS = 2
@@ -30,7 +37,7 @@ class Traveller2 {
     final static int DEFAULT_TORCH_POWER = 5
     final static int NUMBER_OF_WALLS = 5
 
-    /** The grid. */
+    /** The starting grid. */
     def gridStr = """\
 %%%%%%%%%%%%%%%%%%%%
 %..................%
@@ -65,6 +72,9 @@ class Traveller2 {
     /** Screen position to draw the game board. */
     Pos boardPos
 
+    /**
+     * Construct.
+     */
     public Traveller2() {
         // Objects for interacting with the console (like curses)
         terminal = TerminalFacade.createTerminal(System.in, System.out, Charset.forName("UTF8"));
@@ -72,11 +82,13 @@ class Traveller2 {
 
         // Where to draw the board on the screen
         boardPos = new Pos(0, 4)
+        // Create the game board and populate it
         gameBoard = new GameBoard(gridStr, new Pos(10, 10) /* Player position */)
         gameBoard.createWalls()
         gameBoard.createItems(NUMBER_OF_TREASURES, GameBoard.TREASURE)
         gameBoard.createItems(NUMBER_OF_TORCHES, GameBoard.TORCH)
         gameBoard.createItems(NUMBER_OF_PITS, GameBoard.PIT)
+        // Create the utility class for operating on the game board
         gameBoardUtil = new GameBoardUtil(gameBoard, screen, NUMBER_OF_TURNS, boardPos)
         // Add acceptable input commands
         gameBoardUtil.addCommands([
@@ -92,7 +104,6 @@ class Traveller2 {
      * Setup lanterna.
      */
     public setup() {
-        //terminal.enterPrivateMode()
         screen.startScreen()
     }
 
@@ -102,6 +113,7 @@ class Traveller2 {
     public boolean loop() {
         def looping = true
 
+        // Draw the board, limiting visibility
         gameBoardUtil.drawBoard()
 
         boolean endOfGame = false
@@ -110,12 +122,15 @@ class Traveller2 {
         } else if (gameBoardUtil.movementPoints == 0) {
             endOfGame = true
         } else {
+            // Read the next command from the user
             gameBoardUtil.readCommand()
             if (gameBoardUtil.command.command == 'quit') {
+                // They wanted to quit
                 endOfGame = true
             }
         }
         if (endOfGame) {
+            // Draw the whole board at the end
             gameBoardUtil.drawBoard(true)
             gameBoardUtil.endOfGame()
             looping = false
@@ -127,7 +142,6 @@ class Traveller2 {
      * Tear down lanterna.
      */
     public tearDown() {
-        //terminal.exitPrivateMode()
         screen.stopScreen()
     }
 
@@ -195,9 +209,10 @@ class GameBoardUtil {
     /**
      * Draw the board starting at pos. This uses lanterna/screenWriter
      * to do buffered output to the screen for speed.
+     * @param showWholeBoard if true, show the whole board instead of
+     * limiting visibility based on the player's torch.
      */
     def drawBoard(boolean showWholeBoard = false) {
-        showWholeBoard = true
         screen.clear()
         // Draw the board
         def playerPos = gameBoard.player.pos
@@ -213,8 +228,10 @@ class GameBoardUtil {
                         // Draw the item or the space on the board
                         def item = gameBoard.items[posToCheck]
                         if (item) {
+                            // Draw the item
                             drawItem(item)
                         } else {
+                            // Draw the floor
                             drawGridCell(posToCheck)
                         }
                     }
@@ -232,11 +249,14 @@ class GameBoardUtil {
         screen.refresh()
     }
 
+    /**
+     * Draw the floor / walls. BUT do not draw the floor (".").
+     */
     def drawGridCell(Pos pos) {
         def cell = gameBoard.grid[pos.y][pos.x]
-        if (!GameBoard.FLOORS.contains(cell)) {
-            writer.setForegroundColor(GameBoard.WALLS.foregroundColor)
-            writer.setBackgroundColor(GameBoard.WALLS.backgroundColor)
+        if (!GameBoard.FLOOR_SYMBOLS.contains(cell)) {
+            writer.setForegroundColor(GameBoard.INNER_WALL.foregroundColor)
+            writer.setBackgroundColor(GameBoard.INNER_WALL.backgroundColor)
             writer.drawString(
                 boardPos.x + pos.x, boardPos.y + pos.y, cell)
             writer.setForegroundColor(Terminal.Color.DEFAULT)
@@ -268,7 +288,7 @@ class GameBoardUtil {
             def cell = gameBoard.at(new Pos(
                 gameBoard.player.pos.x + command.delta.x,
                 gameBoard.player.pos.y + command.delta.y))
-            if (!GameBoard.WALLS.symbols.contains(cell)) {
+            if (!GameBoard.WALL_SYMBOLS.contains(cell)) {
                 result = true
             }
         }
@@ -365,7 +385,6 @@ class GameBoardUtil {
     def lpad(String str, int width) {
         str.padLeft(3, ' ')
     }
-
 }
 
 /**
@@ -373,49 +392,33 @@ class GameBoardUtil {
  */
 class GameBoard {
     /** Characters that make up the walls. */
-    final static WALLS = [
-        symbols: ['%', '-', '#'],
-        foregroundColor: Terminal.Color.WHITE,
-        backgroundColor: Terminal.Color.DEFAULT,
-    ]
+    final static WALL_SYMBOLS = ['%', '-', '#']
     /** Characters that make up the floor. */
-    final static FLOORS = ['.', ' ']
+    final static FLOOR_SYMBOLS = ['.', ' ']
     /** The player character. */
     final static INNER_WALL = [
-        symbol: WALLS.symbols[0],
-        foregroundColor: WALLS.foregroundColor,
-        backgroundColor: WALLS.backgroundColor,
-        torchPower: 0,
-        score: 0,
+        symbol: WALL_SYMBOLS[0],
+        foregroundColor: Terminal.Color.WHITE,
     ] as Item
     final static PLAYER = [
         symbol: '@',
         foregroundColor: Terminal.Color.BLUE,
-        backgroundColor: Terminal.Color.DEFAULT,
         torchPower: Traveller2.DEFAULT_TORCH_POWER,
-        score: 0,
     ] as Item
     /** Item character. */
     final static TREASURE = [
         symbol: '$',
         foregroundColor: Terminal.Color.YELLOW,
-        backgroundColor: Terminal.Color.DEFAULT,
-        torchPower: 0,
         score: 1,
     ] as Item
     final static TORCH = [
         symbol: 'T',
         foregroundColor: Terminal.Color.GREEN,
-        backgroundColor: Terminal.Color.DEFAULT,
         torchPower: Traveller2.DEFAULT_TORCH_POWER,
-        score: 0,
     ] as Item
     final static PIT = [
         symbol: 'O',
         foregroundColor: Terminal.Color.RED,
-        backgroundColor: Terminal.Color.DEFAULT,
-        torchPower: 0,
-        score: 0,
     ] as Item
 
     /** Random number generator. */
@@ -471,16 +474,17 @@ class GameBoard {
     }
 
     /**
-     * Place numToCreate items onto the grid in positions that are empty
+     * Place numberOfItems items onto the grid in positions that are empty
      * (not consumed by grid walls, the player, or other items).
-     * @param numToCreate the number of items to place
+     * @param numberOfItems the number of items to place
+     * @param itemTemplate a template for the Item to place
      */
     def createItems(int numberOfItems, Item itemTemplate) {
         (0 ..< numberOfItems).each { i ->
             while (true) {
                 Pos pos = new Pos(rand.nextInt(numX), rand.nextInt(numY))
                 def symbol = at(pos)
-                if (GameBoard.FLOORS.contains(symbol)) {
+                if (GameBoard.FLOOR_SYMBOLS.contains(symbol)) {
                     items[pos] = new Item(itemTemplate, pos)
                     break
                 }
@@ -488,6 +492,12 @@ class GameBoard {
         }
     }
 
+    /**
+     * Create internal walls. These walls should not touch each other
+     * or the existing walls (they must be placed on "floor").
+     * This should be called before placing treasure, etc. so it has
+     * a clean slate to work with.
+     */
     def createWalls() {
         (0 ..< Traveller2.NUMBER_OF_WALLS).each { i ->
             while (true) {
@@ -510,14 +520,14 @@ class GameBoard {
                         // make sure this wall doesn't touch any
                         // others
                         def symbol = at(new Pos(x, y))
-                        if (!GameBoard.FLOORS.contains(symbol)) {
+                        if (!GameBoard.FLOOR_SYMBOLS.contains(symbol)) {
                             foundColission = true
                         }
                     }
                 }
                 if (!foundColission) {
                     // Valid wall, draw it
-                    // ELSE we'll try making a new wall
+                    // ELSE we'll try making a new wall with the while (true)
                     (posStart.x .. posEnd.x).each { x ->
                         (posStart.y .. posEnd.y).each { y ->
                             Pos pos = new Pos(x, y)
@@ -533,13 +543,20 @@ class GameBoard {
 
     /**
      * If there is an item at pos, remove it.
+     * Scoring, picking up torches, and death due to put also handled here.
      */
     def removeItem(Pos pos) {
         Item item = items[pos]
         if (item != null) {
             items.remove(pos)
             player.score += item.score
-            player.torchPower += item.torchPower
+            if (item.torchPower > 0 && player.torchPower == 1) {
+                // Visibility never goes below 1. If we are
+                // at 1, just go to torchPower of the item
+                player.torchPower = item.torchPower                
+            } else {
+                player.torchPower += item.torchPower
+            }
             if (PIT.symbol == item.symbol) {
                 fellIntoPit = true
             }
@@ -558,12 +575,18 @@ class Command {
     Pos delta
     /** The command ('quit', 'move'). */
     String command
+    /**
+     * A command that has movement.
+     */
     public Command(Key key, Pos delta, String command) {
         this.key = key
         this.delta = delta
         this.command = command
     }
 
+    /**
+     * A command that has no movement (such as 'quit').
+     */
     public Command(Key key, String command) {
         this.key = key
         this.command = command
@@ -584,7 +607,9 @@ class Pos {
         this.x = x
         this.y = y
     }
-    /** The absolute distance of this position to the next, always positive. */
+    /** 
+     * The absolute distance of this position to the next, always positive.
+     */
     int distanceTo(Pos pos2) {
         def a = Math.abs(x - pos2.x) + 1
         def b = Math.abs(y - pos2.y) + 1
@@ -592,6 +617,11 @@ class Pos {
     }
 
     /**
+     * Calculate line of site from 'this' (the player) to another square.
+     *
+     * NOTE: The low resolution of the grid can cause line of site
+     * mis-calcuation of nearly walls. It isn't obvious how to fix that.
+     *
      * Based on Bresenham's algorithm
      * http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
      * Algorithm based directly on the "full implementation" algorithm here:
@@ -630,7 +660,7 @@ class Pos {
             // If one hits a wall, the wall is visible,
             // but the next space is marked not visible.
             symbol = gameBoard.at(new Pos(x, y))
-            if (GameBoard.WALLS.symbols.contains(lastSymbol)) {
+            if (GameBoard.WALL_SYMBOLS.contains(lastSymbol)) {
                 hasLos = false
                 break
             }
@@ -650,25 +680,33 @@ class Pos {
 }
 
 /**
- * An item (or the player).
+ * An item (the player, an inner wall, pit, or treasure).
  */
 class Item {
-    // Screen symbol
+    /** Symbol to draw on the screen for this item. */
     String symbol
-    // Position of the item
+    /** Position of the item */
     Pos pos
-    // For player Item: remaining torch power
-    // For Torch Item: increase players torch by this much
-    int torchPower
+    /** For player Item: remaining torch power.
+        For Torch Item: increase players torch by this much. */
+    int torchPower = 0
     // Player: Score for this item
     // Treasure: Score delta for player when picked up
-    int score
+    int score = 0
 
-    Terminal.Color foregroundColor
-    Terminal.Color backgroundColor
+    /** Default foreground color */
+    Terminal.Color foregroundColor = Terminal.Color.DEFAULT
+    /** Default background color */
+    Terminal.Color backgroundColor = Terminal.Color.DEFAULT
 
+    /** Torch decrease happens two steps, this boolean is use to track that. */
     boolean decreaseToggle = false
 
+    /**
+     * Called after each move to decrease the torch. The
+     * torch will never go below 1 (so you can always see
+     * adjacent spaces)
+     */
     def decreaseTorch() {
         decreaseToggle = !decreaseToggle
         if (!decreaseToggle) {
@@ -680,7 +718,7 @@ class Item {
     }
 
     /**
-     * Plan constructor. Used to go Map -> Item.f
+     * Plan constructor. Required to coerce Map as Item.
      */
     public Item() {}
 
