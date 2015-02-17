@@ -1,5 +1,4 @@
 @Grab(group='com.googlecode.lanterna', module='lanterna', version='2.1.9')
-@Grab(group='org.apache.commons', module='commons-lang3', version='3.3.2')
 
 import com.googlecode.lanterna.input.Key
 import com.googlecode.lanterna.input.Key.Kind
@@ -9,21 +8,27 @@ import com.googlecode.lanterna.terminal.Terminal
 import com.googlecode.lanterna.TerminalFacade
 import groovy.transform.EqualsAndHashCode
 import java.nio.charset.Charset
-import java.util.Random
-import org.apache.commons.lang3.StringUtils
 
 /**
- * TODO: Color of: item (yellow), player (red), walls (green), floor (gray?).
- * TODO: Place Traps
- * TODO: Place Torches
- * TODO: Degrade torce, one level per two turns (minimum torch?)
- * TODO: Draw random walls
- * TODO: Can the inner walls be made of items?
- * TODO: Add overwrite toggle to Submline on Desktop + Deborah's Mac x2 accounts
+ * TODO: Fix line of sight. The issue is that when one is close to a wall,
+ *       the angle of the line (ray trace) is too oblique because of the
+ *       low resolution and therefore line of site returns false when
+ *       sometimes it really should be true. Probably not easily fixable.
+ * 
+ * Done:
+ * Place Traps
+ * Place Torches
+ * Degrade torch, one level per two turns (minimum torch?)
+ * Draw random inner walls
  */
 class Traveller2 {
 
-    final static int numberOfTurns = 100
+    final static int NUMBER_OF_TURNS = 100
+    final static int NUMBER_OF_TREASURES = 100
+    final static int NUMBER_OF_PITS = 2
+    final static int NUMBER_OF_TORCHES = 5
+    final static int DEFAULT_TORCH_POWER = 5
+    final static int NUMBER_OF_WALLS = 5
 
     /** The grid. */
     def gridStr = """\
@@ -31,17 +36,17 @@ class Traveller2 {
 %..................%
 %..................%
 %..................%
-%..%%%%%%%%%%%%%...%
 %..................%
-%..%...........%...%
-%..%...........%...%
-%..%...........%...%
-%..%...........%...%
-%..%...........%...%
-%..%...........%...%
-%..%...........%...%
 %..................%
-%..%%%%%%%%%%%%%...%
+%..................%
+%..................%
+%..................%
+%..................%
+%..................%
+%..................%
+%..................%
+%..................%
+%..................%
 %..................%
 %..................%
 %..................%
@@ -67,9 +72,12 @@ class Traveller2 {
 
         // Where to draw the board on the screen
         boardPos = new Pos(0, 4)
-        gameBoard = new GameBoard(gridStr, new Pos(13, 14) /* Player position */)
-        gameBoard.createItems(200)
-        gameBoardUtil = new GameBoardUtil(gameBoard, screen, numberOfTurns, boardPos)
+        gameBoard = new GameBoard(gridStr, new Pos(10, 10) /* Player position */)
+        gameBoard.createWalls()
+        gameBoard.createItems(NUMBER_OF_TREASURES, GameBoard.TREASURE)
+        gameBoard.createItems(NUMBER_OF_TORCHES, GameBoard.TORCH)
+        gameBoard.createItems(NUMBER_OF_PITS, GameBoard.PIT)
+        gameBoardUtil = new GameBoardUtil(gameBoard, screen, NUMBER_OF_TURNS, boardPos)
         // Add acceptable input commands
         gameBoardUtil.addCommands([
             new Command(new Key(Key.Kind.ArrowDown),  new Pos( 0,  1), 'move'),
@@ -96,15 +104,21 @@ class Traveller2 {
 
         gameBoardUtil.drawBoard()
 
-        if (gameBoardUtil.movementPoints == 0) {
-            gameBoardUtil.endOfGame()
-            looping = false
+        boolean endOfGame = false
+        if (gameBoardUtil.gameBoard.fellIntoPit) {
+            endOfGame = true
+        } else if (gameBoardUtil.movementPoints == 0) {
+            endOfGame = true
         } else {
             gameBoardUtil.readCommand()
             if (gameBoardUtil.command.command == 'quit') {
-                gameBoardUtil.endOfGame()
-                looping = false
+                endOfGame = true
             }
+        }
+        if (endOfGame) {
+            gameBoardUtil.drawBoard(true)
+            gameBoardUtil.endOfGame()
+            looping = false
         }
         looping
     }
@@ -182,7 +196,8 @@ class GameBoardUtil {
      * Draw the board starting at pos. This uses lanterna/screenWriter
      * to do buffered output to the screen for speed.
      */
-    def drawBoard() {
+    def drawBoard(boolean showWholeBoard = false) {
+        showWholeBoard = true
         screen.clear()
         // Draw the board
         def playerPos = gameBoard.player.pos
@@ -192,28 +207,54 @@ class GameBoardUtil {
                 if (posToCheck != playerPos) {
                     // Draw non-player game board spaces
                     def playerDist = playerPos.distanceTo(posToCheck)
-                    if (playerDist <= (gameBoard.player.torchPower + 1) &&
-                        playerPos.lineOfSightTo(gameBoard, posToCheck)) {
-                            // Draw the item or the space on the board
-                            def cell = gameBoard.items[posToCheck]?.symbol ?: 
-                                gameBoard.grid[y][x]
-                            writer.drawString(
-                                boardPos.x + x, boardPos.y + y,
-                                cell)
+                    if (showWholeBoard ||
+                            (playerDist <= (gameBoard.player.torchPower + 1) &&
+                             playerPos.lineOfSightTo(gameBoard, posToCheck))) {
+                        // Draw the item or the space on the board
+                        def item = gameBoard.items[posToCheck]
+                        if (item) {
+                            drawItem(item)
+                        } else {
+                            drawGridCell(posToCheck)
+                        }
                     }
                 }
             }
         }
 
         // Draw the player
-        writer.drawString(
-                boardPos.x + gameBoard.player.pos.x, 
-                boardPos.y + gameBoard.player.pos.y, 
-                gameBoard.player.symbol)
+        drawItem(gameBoard.player)
+
         // Draw the score and such
-        writer.drawString(0, 0, "Moves Left: ${movementPoints}")
-        writer.drawString(0, 1, "Score     : ${score}")
+        writer.drawString(0, 0, "Moves Left  : ${movementPoints}")
+        writer.drawString(0, 1, "Score       : ${gameBoard.player.score}")
+        writer.drawString(0, 2, "Torch Power : ${gameBoard.player.torchPower}")
         screen.refresh()
+    }
+
+    def drawGridCell(Pos pos) {
+        def cell = gameBoard.grid[pos.y][pos.x]
+        if (!GameBoard.FLOORS.contains(cell)) {
+            writer.setForegroundColor(GameBoard.WALLS.foregroundColor)
+            writer.setBackgroundColor(GameBoard.WALLS.backgroundColor)
+            writer.drawString(
+                boardPos.x + pos.x, boardPos.y + pos.y, cell)
+            writer.setForegroundColor(Terminal.Color.DEFAULT)
+            writer.setBackgroundColor(Terminal.Color.DEFAULT)
+        }
+    }
+
+    /**
+     * Draw an item.
+     * @param item the item to draw
+     */
+    def drawItem(Item item) {
+        writer.setForegroundColor(item.foregroundColor)
+        writer.setBackgroundColor(item.backgroundColor)
+        writer.drawString(boardPos.x + item.pos.x, boardPos.y + item.pos.y, 
+                item.symbol)
+        writer.setForegroundColor(Terminal.Color.DEFAULT)
+        writer.setBackgroundColor(Terminal.Color.DEFAULT)
     }
 
     /**
@@ -224,10 +265,10 @@ class GameBoardUtil {
     def canMovePlayer(Command command) {
         def result = false
         if (command.command == 'move') {
-            def pos = gameBoard.at(new Pos(
+            def cell = gameBoard.at(new Pos(
                 gameBoard.player.pos.x + command.delta.x,
                 gameBoard.player.pos.y + command.delta.y))
-            if (!GameBoard.WALLS.contains(pos)) {
+            if (!GameBoard.WALLS.symbols.contains(cell)) {
                 result = true
             }
         }
@@ -242,11 +283,10 @@ class GameBoardUtil {
     def movePlayer(Command command) {
         def moved = canMovePlayer(command)
         if (moved) {
+            gameBoard.player.decreaseTorch()
             gameBoard.player.pos.x += command.delta.x
             gameBoard.player.pos.y += command.delta.y
-            if (gameBoard.removeItem(gameBoard.player.pos)) {
-                score++
-            }
+            gameBoard.removeItem(gameBoard.player.pos)
         }
         moved
     }
@@ -285,22 +325,21 @@ class GameBoardUtil {
      * Display a message if the user quits or when the game ends.
      */
     def endOfGame() {
-        def message
+        def message = []
+        message << '####################'
+        message << '#                  #'
         if (command.command == 'quit') {
-            message = ['###################',
-                       '#                 #',
-                       '#    You Quit!    #',
-                       "#    Score ${lpad("${score}", 3)}    #",
-                       '#                 #',
-                       '###################']
+            message << '#    You Quit!     #'
+        } else if (gameBoard.fellIntoPit) {
+            message << '# Fell Into a Pit! #'
         } else {
-            message = ['###################',
-                       '#                 #',
-                       '#    Game Over!   #',
-                       "#    Score ${lpad("${score}", 3)}    #",
-                       '#                 #',
-                       '###################']
+            message << '#    Game Over!    #'
         }
+        message << "#    Score ${lpad("${gameBoard.player.score}", 3)}     #"
+        message << '#                  #'
+        message << '#  Press Any Key   #'
+        message << '#                  #'
+        message << '####################'
         int messageHeight = message.size()
         int messsageWidth = message[0].size()
         Pos messagePos = new Pos(
@@ -317,15 +356,14 @@ class GameBoardUtil {
         writer.setForegroundColor(Terminal.Color.DEFAULT)
         writer.setBackgroundColor(Terminal.Color.DEFAULT)
         screen.refresh()
-        Thread.sleep(3000)
-
+        while (screen.readInput() == null) {}
     }
 
     /**
      * Left pad a string with spaces to a specific width.
      */
     def lpad(String str, int width) {
-        StringUtils.leftPad(str, width, ' ')
+        str.padLeft(3, ' ')
     }
 
 }
@@ -335,15 +373,50 @@ class GameBoardUtil {
  */
 class GameBoard {
     /** Characters that make up the walls. */
-    final static WALLS = ['%', '-', '#']
+    final static WALLS = [
+        symbols: ['%', '-', '#'],
+        foregroundColor: Terminal.Color.WHITE,
+        backgroundColor: Terminal.Color.DEFAULT,
+    ]
     /** Characters that make up the floor. */
     final static FLOORS = ['.', ' ']
     /** The player character. */
-    final static PLAYER = '@'
+    final static INNER_WALL = [
+        symbol: WALLS.symbols[0],
+        foregroundColor: WALLS.foregroundColor,
+        backgroundColor: WALLS.backgroundColor,
+        torchPower: 0,
+        score: 0,
+    ] as Item
+    final static PLAYER = [
+        symbol: '@',
+        foregroundColor: Terminal.Color.BLUE,
+        backgroundColor: Terminal.Color.DEFAULT,
+        torchPower: Traveller2.DEFAULT_TORCH_POWER,
+        score: 0,
+    ] as Item
     /** Item character. */
-    final static ITEMS = '$'
-    final static TORCH = 'T'
-    final static PIT = 'O'
+    final static TREASURE = [
+        symbol: '$',
+        foregroundColor: Terminal.Color.YELLOW,
+        backgroundColor: Terminal.Color.DEFAULT,
+        torchPower: 0,
+        score: 1,
+    ] as Item
+    final static TORCH = [
+        symbol: 'T',
+        foregroundColor: Terminal.Color.GREEN,
+        backgroundColor: Terminal.Color.DEFAULT,
+        torchPower: Traveller2.DEFAULT_TORCH_POWER,
+        score: 0,
+    ] as Item
+    final static PIT = [
+        symbol: 'O',
+        foregroundColor: Terminal.Color.RED,
+        backgroundColor: Terminal.Color.DEFAULT,
+        torchPower: 0,
+        score: 0,
+    ] as Item
 
     /** Random number generator. */
     Random rand
@@ -357,6 +430,8 @@ class GameBoard {
     int numY
     /** How many columns in the grid / game board. */
     int numX
+    /** Fell into a pit? */
+    boolean fellIntoPit = false
 
     /**
      * Construct the game board and the player starting position.
@@ -369,7 +444,7 @@ class GameBoard {
         numY = grid.size()
         numX = grid[0].size()
         items = [:]
-        player = new Item(GameBoard.PLAYER, playerPos, 5)
+        player = new Item(GameBoard.PLAYER, playerPos)
     }
 
     /**
@@ -400,13 +475,56 @@ class GameBoard {
      * (not consumed by grid walls, the player, or other items).
      * @param numToCreate the number of items to place
      */
-    def createItems(int numToCreate) {
-        (0 ..< numToCreate).each { i ->
+    def createItems(int numberOfItems, Item itemTemplate) {
+        (0 ..< numberOfItems).each { i ->
             while (true) {
                 Pos pos = new Pos(rand.nextInt(numX), rand.nextInt(numY))
                 def symbol = at(pos)
                 if (GameBoard.FLOORS.contains(symbol)) {
-                    items[pos] = new Item(GameBoard.ITEMS, pos)
+                    items[pos] = new Item(itemTemplate, pos)
+                    break
+                }
+            }
+        }
+    }
+
+    def createWalls() {
+        (0 ..< Traveller2.NUMBER_OF_WALLS).each { i ->
+            while (true) {
+                Pos posStart = new Pos(
+                    // for X and Y, skip the edge (border) and first row/col
+                    rand.nextInt(numX - 4) + 2, 
+                    rand.nextInt(numY - 4) + 2)
+                boolean horizontalWall = rand.nextBoolean()
+                Pos posEnd
+                int wallLength = rand.nextInt(3) + 3
+                if (horizontalWall) {
+                    posEnd = new Pos(posStart.x + wallLength, posStart.y)
+                } else {
+                    posEnd = new Pos(posStart.x, posStart.y + wallLength)                    
+                }
+                def foundColission = false
+                ((posStart.x - 1 .. posEnd.x + 1)).each { x ->
+                    ((posStart.y - 1) .. (posEnd.y + 1)).each { y ->
+                        // Check +/- one square in x and y to
+                        // make sure this wall doesn't touch any
+                        // others
+                        def symbol = at(new Pos(x, y))
+                        if (!GameBoard.FLOORS.contains(symbol)) {
+                            foundColission = true
+                        }
+                    }
+                }
+                if (!foundColission) {
+                    // Valid wall, draw it
+                    // ELSE we'll try making a new wall
+                    (posStart.x .. posEnd.x).each { x ->
+                        (posStart.y .. posEnd.y).each { y ->
+                            Pos pos = new Pos(x, y)
+                                items[pos] = new Item(INNER_WALL, pos)
+                        }
+                    }
+                    // We are done with one wall, break the while(true)                    
                     break
                 }
             }
@@ -415,14 +533,17 @@ class GameBoard {
 
     /**
      * If there is an item at pos, remove it.
-     * @return true if an item was removed
      */
     def removeItem(Pos pos) {
         Item item = items[pos]
         if (item != null) {
             items.remove(pos)
+            player.score += item.score
+            player.torchPower += item.torchPower
+            if (PIT.symbol == item.symbol) {
+                fellIntoPit = true
+            }
         }
-        item != null
     }
 }
 
@@ -475,6 +596,12 @@ class Pos {
      * http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
      * Algorithm based directly on the "full implementation" algorithm here:
      * http://tech-algorithm.com/articles/drawing-line-using-bresenham-algorithm/
+     *
+     * TODO: This seems to abort too easily such as move near the top left of
+     * TODO: the grid walls which should be visible are not.
+     *
+     * @param gameBoard
+     * @param posToCheck
      */
     boolean lineOfSightTo(GameBoard gameBoard, Pos posToCheck) {
         boolean hasLos = true
@@ -486,32 +613,16 @@ class Pos {
         int w = x2 - x 
         int h = y2 - y 
         int dx1 = 0, dy1 = 0, dx2 = 0, dy2 = 0 
-        if (w < 0) {
-            dx1 = -1  
-        } else if (w > 0) {
-            dx1 = 1 
-        }
-        if (h < 0) {
-            dy1 = -1  
-        } else if (h > 0) {
-            dy1 = 1 
-        }
-        if (w < 0) {
-            dx2 = -1  
-        } else if (w > 0) {
-            dx2 = 1 
-        }
+        if (w < 0) { dx1 = -1 } else if (w > 0) { dx1 = 1 }
+        if (h < 0) { dy1 = -1 } else if (h > 0) { dy1 = 1 }
+        if (w < 0) { dx2 = -1 } else if (w > 0) { dx2 = 1 }
         int longest = Math.abs(w) 
         int shortest = Math.abs(h) 
         def symbol, lastSymbol
         if (!(longest > shortest)) {
             longest = Math.abs(h) 
             shortest = Math.abs(w) 
-            if (h < 0) {
-                dy2 = -1  
-            } else if (h > 0)  {
-                dy2 = 1 
-            }
+            if (h < 0) { dy2 = -1  } else if (h > 0)  { dy2 = 1 }
             dx2 = 0             
         }
         int numerator = longest >> 1 
@@ -519,7 +630,7 @@ class Pos {
             // If one hits a wall, the wall is visible,
             // but the next space is marked not visible.
             symbol = gameBoard.at(new Pos(x, y))
-            if (GameBoard.WALLS.contains(lastSymbol)) {
+            if (GameBoard.WALLS.symbols.contains(lastSymbol)) {
                 hasLos = false
                 break
             }
@@ -546,17 +657,44 @@ class Item {
     String symbol
     // Position of the item
     Pos pos
-    // Remaining torch, currently only valid for the player (not other items)
+    // For player Item: remaining torch power
+    // For Torch Item: increase players torch by this much
     int torchPower
+    // Player: Score for this item
+    // Treasure: Score delta for player when picked up
+    int score
+
+    Terminal.Color foregroundColor
+    Terminal.Color backgroundColor
+
+    boolean decreaseToggle = false
+
+    def decreaseTorch() {
+        decreaseToggle = !decreaseToggle
+        if (!decreaseToggle) {
+            if (torchPower >= 2) {
+                // Never go below 1
+                torchPower--
+            }
+        }
+    }
+
+    /**
+     * Plan constructor. Used to go Map -> Item.f
+     */
+    public Item() {}
 
     /**
      * Construct the item.
      * @param symbol the visual symbol for the item.
      * @param pos the position of the item (in the grid)
      */
-    public Item(String symbol, Pos pos, int torchPower = 0) {
-        this.symbol = symbol
+    public Item(Item itemTemplate, Pos pos) {
+        this.symbol = itemTemplate.symbol
+        this.foregroundColor = itemTemplate.foregroundColor
+        this.backgroundColor = itemTemplate.backgroundColor
+        this.torchPower = itemTemplate.torchPower
+        this.score = itemTemplate.score
         this.pos = pos
-        this.torchPower = torchPower
     }
 }
