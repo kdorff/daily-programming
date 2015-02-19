@@ -1,4 +1,8 @@
 /**
+ * Reddit Daily Programmer Challenge
+ *
+ * http://www.reddit.com/r/dailyprogrammer/comments/2uo3yf/20150204_challenge_200_intermediate_metro_tile/
+ *
  * This implementation requires each tile be bordered by
  * ".", which is part of the problem description. It will
  * NOT currently handle tiles that are all the way to the

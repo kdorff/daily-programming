@@ -1,4 +1,11 @@
 /**
+ * Reddit Daily Programmer Challenges (both in this program)
+ *
+ * http://www.reddit.com/r/dailyprogrammer/comments/2tr6yn/2015126_challenge_199_bank_number_banners_pt_1/
+ * http://www.reddit.com/r/dailyprogrammer/comments/2u0fyx/2015126_challenge_199_bank_number_banners_pt_2/
+ */
+
+/**
  * Unit test class to test that the codec can round-trip
  * digits -> banner -> digits
  */

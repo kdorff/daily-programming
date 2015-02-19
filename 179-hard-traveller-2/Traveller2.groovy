@@ -1,5 +1,12 @@
 @Grab(group='com.googlecode.lanterna', module='lanterna', version='2.1.9')
 
+/**
+ * Reddit Daily Programmer Challenge
+ *
+ * http://www.reddit.com/r/dailyprogrammer/comments/2g7ucz/9122014_challenge_179_hard_traveller_game_part_2/
+ */
+
+
 import com.googlecode.lanterna.input.Key
 import com.googlecode.lanterna.input.Key.Kind
 import com.googlecode.lanterna.screen.Screen
@@ -97,6 +104,8 @@ class Traveller2 {
             new Command(new Key(Key.Kind.ArrowLeft),  new Pos(-1,  0), 'move'),
             new Command(new Key(Key.Kind.ArrowRight), new Pos( 1,  0), 'move'),
             new Command(new Key((char) 'q'), 'quit'),
+            new Command(new Key((char) 's'), 'show'),
+            new Command(new Key((char) 'd'), 'degrade'),
         ])
     }
 
@@ -127,6 +136,12 @@ class Traveller2 {
             if (gameBoardUtil.command.command == 'quit') {
                 // They wanted to quit
                 endOfGame = true
+            } else if (gameBoardUtil.command.command == 'show') {
+                // They wanted to quit
+                gameBoardUtil.showWholeBoard = !gameBoardUtil.showWholeBoard
+            } else if (gameBoardUtil.command.command == 'degrade') {
+                // They wanted to quit
+                gameBoardUtil.degradeTorch = !gameBoardUtil.degradeTorch
             }
         }
         if (endOfGame) {
@@ -182,6 +197,10 @@ class GameBoardUtil {
     int movementPoints
     /** The board position on the screen */
     Pos boardPos
+    /** If we should always show the whole board. */
+    boolean showWholeBoard = false
+    /** If the torch should degrade every two steps. */
+    boolean degradeTorch = true
 
     /**
      * Constuct this class.
@@ -212,7 +231,7 @@ class GameBoardUtil {
      * @param showWholeBoard if true, show the whole board instead of
      * limiting visibility based on the player's torch.
      */
-    def drawBoard(boolean showWholeBoard = false) {
+    def drawBoard(boolean forceSowWholeBoard = false) {
         screen.clear()
         // Draw the board
         def playerPos = gameBoard.player.pos
@@ -222,7 +241,7 @@ class GameBoardUtil {
                 if (posToCheck != playerPos) {
                     // Draw non-player game board spaces
                     def playerDist = playerPos.distanceTo(posToCheck)
-                    if (showWholeBoard ||
+                    if (forceSowWholeBoard || showWholeBoard ||
                             (playerDist <= (gameBoard.player.torchPower + 1) &&
                              playerPos.lineOfSightTo(gameBoard, posToCheck))) {
                         // Draw the item or the space on the board
@@ -303,7 +322,9 @@ class GameBoardUtil {
     def movePlayer(Command command) {
         def moved = canMovePlayer(command)
         if (moved) {
-            gameBoard.player.decreaseTorch()
+            if (degradeTorch) {
+                gameBoard.player.decreaseTorch()
+            }
             gameBoard.player.pos.x += command.delta.x
             gameBoard.player.pos.y += command.delta.y
             gameBoard.removeItem(gameBoard.player.pos)

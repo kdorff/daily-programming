@@ -1,6 +1,12 @@
 @Grab(group='com.googlecode.lanterna', module='lanterna', version='2.1.9')
 @Grab(group='org.apache.commons', module='commons-lang3', version='3.3.2')
 
+/**
+ * Reddit Daily Programmer Challenge
+ *
+ * http://www.reddit.com/r/dailyprogrammer/comments/2g1c80/9102014_challenge_179_intermediate_roguelike_the/
+ */
+
 import com.googlecode.lanterna.screen.Screen
 import com.googlecode.lanterna.screen.ScreenWriter
 import com.googlecode.lanterna.terminal.Terminal
