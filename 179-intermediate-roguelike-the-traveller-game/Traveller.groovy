@@ -21,7 +21,7 @@ import org.apache.commons.lang3.StringUtils
 
 class Traveller {
 
-    final static int numberOfTurns = 10
+    final static int numberOfTurns = 100
 
     /** The grid. */
     def gridStr = """\
