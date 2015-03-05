@@ -2,33 +2,61 @@ import groovy.transform.*
 
 def q = new DoublePriorityQueue()
 
+assert q.size() == 0
 q.enqueue("a", 2.0, 4.0)
+assert q.size() == 1
 q.enqueue("b", 5.0, 1.0)
+assert q.size() == 2
 q.enqueue("c", 3.0, 3.0)
+assert q.size() == 3
 q.enqueue("d", 1.0, 5.0)
+assert q.size() == 4
 q.enqueue("e", 4.0, 2.0)
-q.dump()
+assert q.size() == 5
+q.enqueue("f", 4.0, 2.0)
+assert q.size() == 6
+println q
 
-println q.dequeue('x')
-println q.dequeue('n')
-println q.dequeue('a')
-println q.dequeue('b')
-println q.dequeue('a')
-println q.dequeue('n')
+assert 'a' == q.dequeueNatural()
+assert q.size() == 5
+assert 'b' == q.dequeueA()
+assert q.size() == 4
+assert 'd' == q.dequeueB()
+assert q.size() == 3
+assert 'e' == q.dequeueA()
+assert q.size() == 2
+assert 'f' == q.dequeueA()
+assert q.size() == 1
+assert 'c' == q.dequeueNatural()
+assert q.size() == 0
 
 /**
  * Implements a double priority queue. This should be pretty
  * easy to extend to be a n-priority queue.
  * This is NOT thread safe!!
+ * This is an implementation of the double priority queue that uses multiple
+ * linked lists to store the data. Each enqueue and dequeue will update
+ * the linked lists, but no additional sorting is ever required.
  */
 class DoublePriorityQueue {
-    /** The list of the queues. */
+    /** The list of the queues (natural, a, b). */
     static QUEUES = ['n', 'a', 'b']
 
     /** Map of queue name (n, a, b) to the head of that priority queue. */
     Map<String, Item> heads = [:]
     /** Map of queue name (n, a, b) to the tail of that priority queue. */
     Map<String, Item> tails = [:]
+
+    /** The size. */
+    int size = 0
+
+    /**
+     * Obtain the current size of the queue.
+     * @return the size of the queue
+     */
+    def size() {
+        size
+    }
 
     /**
      * Enqueue a value with priorityA and priorityB.
@@ -56,6 +84,7 @@ class DoublePriorityQueue {
                 enqueuePrioriy(item, q)
             }
         }
+        size++
     }
 
     /**
@@ -131,7 +160,7 @@ class DoublePriorityQueue {
      * Dequeue from the specified queue.
      * @param q the queue to remove from
      */
-    String dequeue(String q) {
+    private String dequeue(String q) {
         Item item
         if (QUEUES.contains(q)) {
             if (heads[q]) { 
@@ -144,6 +173,9 @@ class DoublePriorityQueue {
                 }
             }
         }
+        if (item != null) {
+            size--
+        }
         item?.value
     }
 
@@ -153,6 +185,7 @@ class DoublePriorityQueue {
      * @param q the queue to remove the item from
      */
     private void remove(Item item, String q) {
+        def removed = false
         if (item == heads[q]) {
             if (item == tails[q]) {
                 // Head AND tail, removing the single element
@@ -174,6 +207,7 @@ class DoublePriorityQueue {
                         // Remove the tail
                         tails[q] = previous
                     }
+                    break
                 }
                 previous = current
                 current = current.nexts[q]
@@ -184,17 +218,18 @@ class DoublePriorityQueue {
     /**
      * Display the various queues.
      */
-    def dump() {
+    String toString() {
+        def sb = new StringBuilder()
         QUEUES.each { q ->
             Item current = heads[q]
-            print "${q}="
+            sb << "${q}="
             while (current) {
-                print current
+                sb << current
                 current = current.nexts[q]
             }
-            println ""
+            sb << "\n"
         }
-        println "-------"
+        sb << "-------" << "\n"
     }
 }
 
