@@ -15,17 +15,17 @@ q.enqueue("f", 4.0, 2.0)
 assert q.size() == 6
 println q
 
-assert 'a' == q.dequeueNatural()
+assert 'a' == q.dequeueByInsertionOrder()
 assert q.size() == 5
-assert 'b' == q.dequeueA()
+assert 'b' == q.dequeuePriorityA()
 assert q.size() == 4
-assert 'd' == q.dequeueB()
+assert 'd' == q.dequeuePriorityB()
 assert q.size() == 3
-assert 'e' == q.dequeueA()
+assert 'e' == q.dequeuePriorityA()
 assert q.size() == 2
-assert 'f' == q.dequeueA()
+assert 'f' == q.dequeuePriorityA()
 assert q.size() == 1
-assert 'c' == q.dequeueNatural()
+assert 'c' == q.dequeueByInsertionOrder()
 assert q.size() == 0
 
 /**
@@ -53,7 +53,7 @@ class DoublePriorityQueueSimple {
     int numInserts = 0
 
     /** The current sort. */
-    SortType currentSort = SortType.NONE;
+    PQItem.SortField currentSort = PQItem.SortField.NONE;
 
     /**
      * Enqueue a value with priorityA and priorityB. This will force a re-sort
@@ -64,7 +64,7 @@ class DoublePriorityQueueSimple {
      * @param priorityA the b-priority value
      */
     def enqueue(String value, double priorityA, double priorityB) {
-        currentSort = SortType.NONE
+        currentSort = PQItem.SortField.NONE
         def item = new PQItem()
         item.value = value
         item.priorities[PQItem.SortField.PRI_A] = priorityA
@@ -85,8 +85,8 @@ class DoublePriorityQueueSimple {
      * Dequeue from insertion order.
      * @return null if queue is empty, otherwise the value
      */
-    String dequeueNatural() {
-        sort(SortType.INDEX)
+    String dequeueByInsertionOrder() {
+        sort(PQItem.SortField.INDEX)
         list.poll()?.value
     }
 
@@ -94,8 +94,8 @@ class DoublePriorityQueueSimple {
      * Dequeue from priority A.
      * @return null if queue is empty, otherwise the value
      */
-    String dequeueA() {
-        sort(SortType.PRI_A)
+    String dequeuePriorityA() {
+        sort(PQItem.SortField.PRI_A)
         list.poll()?.value
     }
 
@@ -103,53 +103,65 @@ class DoublePriorityQueueSimple {
      * Dequeue from priority B.
      * @return null if queue is empty, otherwise the value
      */
-    String dequeueB() {
-        sort(SortType.PRI_B)
+    String dequeuePriorityB() {
+        sort(PQItem.SortField.PRI_B)
         list.poll()?.value
     }
 
     /**
      * Re-sort the backing list based on the desired sort. If the list is
      * already sorted in the desired order, this will NOT resort the list.
+     * @param desiredSort the sort / retrievalgit order that is desired
      */
-    private void sort(SortType desiredSort) {
+    private void sort(PQItem.SortField desiredSort) {
         int result
         if (currentSort != desiredSort) {
             // Dequeue order has changed OR there has been an insertion
             // Resort
             currentSort = desiredSort
-            List<SortType> sortDescList = currentSort.sortDescList
             list = list.sort { a, b ->
-                if (sortDescList) {
-                    SortDesc priSort = sortDescList[0]
-                    double aValue = a.priorities[priSort.sortField]
-                    double bValue = b.priorities[priSort.sortField]
-                    if (aValue == bValue) {
-                        // Secondary sort? We supprort 2 levels of sort at most
-                        if (sortDescList.size() > 1) {
-                            SortDesc secSort = sortDescList[1]
-                            aValue = a.priorities[secSort.sortField]
-                            bValue = b.priorities[secSort.sortField]
-                            if (secSort.sortOrder == SortDesc.SortOrder.ASC) {
-                                result = aValue <=> bValue
-                            } else {
-                                result = bValue <=> aValue
-                            }
-                        } else {
-                            // Only a single sort type. They are equal.
-                            0
-                        }
-                    } else {
-                        if (priSort.sortOrder == SortDesc.SortOrder.ASC) {
-                            result = aValue <=> bValue
-                        } else {
-                            result = bValue <=> aValue
-                        }
-                    }
+                if (currentSort == PQItem.SortField.INDEX) {
+                    indexSort(a, b)
+                } else {
+                    prioritySort([currentSort, PQItem.SortField.INDEX], a, b)
                 }
             }
-            result
         }
+    }
+
+    /**
+     * Compare two items with insertion index ordering.
+     * @param a left item to compare
+     * @param b right item to compare
+     */
+    int indexSort(PQItem a, PQItem b) {
+        // Sort in ascending order
+        def field = PQItem.SortField.INDEX
+        a.priorities[field] <=> b.priorities[field]
+    }
+
+    /**
+     * Compare two items with priority a or b ordering.
+     * @param a left item to compare
+     * @param b right item to compare
+     */
+    int prioritySort(List<PQItem.SortField> sortFields, PQItem a, PQItem b) {
+        int result = 0
+        for (field in sortFields) {
+            double aVal = a.priorities[field]
+            double bVal = b.priorities[field]
+            if (field != PQItem.SortField.INDEX) {
+                // Index uses ascending sort, but priority a and b 
+                // use descending sort, so swap a and b
+                (aVal, bVal) = [bVal, aVal]
+            }
+            result = aVal <=> bVal
+            if (result) {
+                // We found a non-equal (0) value, we're done
+                break
+            }
+        }
+        result
     }
 
     /**
@@ -171,6 +183,7 @@ class DoublePriorityQueueSimple {
 class PQItem {
     /** The field to sort on. The keys of PQItem.priorities. */
     enum SortField {
+        NONE, // Only used for current sort
         INDEX,
         PRI_A,
         PRI_B
@@ -178,6 +191,7 @@ class PQItem {
 
     /** The value of the item stored in the priority queue. */
     String value
+
     /** The priorities, keys such as a, b, and i (insertion index). */
     Map<SortField, Double> priorities = [:]
 
@@ -187,58 +201,5 @@ class PQItem {
      */
     String toString() {
         "[${value}[${priorities[SortField.INDEX]}]:a(${priorities[SortField.PRI_A]}) b(${priorities[SortField.PRI_B]})]"
-    }
-}
-
-/**
- * A sort description (key and order).
- */
-class SortDesc {
-    /** Possible sort directions. */
-    enum SortOrder {
-        ASC,
-        DESC,
-    }
-
-    /** The key to sort (key from PQItem.priorities, one of SortField). */
-    PQItem.SortField sortField
-    /** The order to sort. */
-    SortOrder sortOrder
-
-    /**
-     * Construct a SortDesc.
-     * @param sortField field to sort by
-     * @param sortOrder the order (asc, desc) to sort this field by
-     */
-    public SortDesc(PQItem.SortField sortField, SortOrder sortOrder) {
-        this.sortField = sortField
-        this.sortOrder = sortOrder
-    }
-}
-
-/**
- * The sort type for a given priority queue.
- */
-enum SortType {
-    // No sorting
-    NONE(null),
-    // Sorting on insertion order (ascending)
-    INDEX([new SortDesc(PQItem.SortField.INDEX, SortDesc.SortOrder.ASC)]),
-    // Sorting on priorityA (descending), index (ascending)
-    PRI_A([new SortDesc(PQItem.SortField.PRI_A, SortDesc.SortOrder.DESC),
-           new SortDesc(PQItem.SortField.INDEX, SortDesc.SortOrder.ASC)]),
-    // Sorting on priorityB (descending), index (ascending)
-    PRI_B([new SortDesc(PQItem.SortField.PRI_B, SortDesc.SortOrder.DESC),
-           new SortDesc(PQItem.SortField.INDEX, SortDesc.SortOrder.ASC)])
-
-    /** Storage for the per-enum sort description. */
-    private final List<SortDesc> sortDescList
-
-    /**
-     * Enum initializer, one per entry.
-     * @param sortDescList the list of SortDesc sort descriptions.
-     */
-    public SortType(List<SortDesc> sortDescList) {
-        this.sortDescList = sortDescList
     }
 }
