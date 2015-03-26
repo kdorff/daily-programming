@@ -16,8 +16,7 @@ class ColumnMaker {
      * @return this this object, so .toString(), etc. can be chained.
      */
     ColumnMaker processFile(File inputFile) {
-        List<String> lines = readFile(inputFile)
-        List<String> widthedLines = linesWithWidth(lines)
+        List<String> widthedLines = readFile(inputFile)
         columnsLists = columnize(widthedLines)
         this
     }
@@ -31,14 +30,10 @@ class ColumnMaker {
      */
     List<String> readFile(File inputFile) {
         List<String> lines = []
-        inputFile.eachLine { line ->
-            if (numColumns == null) {
-                (numColumns, colWidth, spaceWidth) = line.split(" ").collect { it as int }
-            } else {
-                lines << line
-            }
-        }
-        lines
+        def reader = inputFile.newReader()
+        (numColumns, colWidth, spaceWidth) =
+            reader.readLine().split(" ").collect { it as int }
+        readLinesWithWidth(reader)
     }
 
     /**
@@ -46,10 +41,11 @@ class ColumnMaker {
      * @param lines the lines to convert
      * @return list of string, each line no longer than colWidth
      */
-    private List<String> linesWithWidth(lines) {
+    private List<String> readLinesWithWidth(reader) {
         List<String> result = []
         StringBuilder currentLine = new StringBuilder()
-        lines.each { line ->
+        def line = reader.readLine()
+        while (line != null) {
             line.findAll(wordPattern) { whole, word ->
                 // End of word
                 if (currentLine.size() == 0 || 
@@ -64,6 +60,7 @@ class ColumnMaker {
                     currentLine << word
                 }
             }
+            line = reader.readLine()
         }
         // End of last line
         if (currentLine.size() > 0) {
