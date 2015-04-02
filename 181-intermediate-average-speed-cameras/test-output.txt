@@ -1,0 +1,4 @@
+Vehicle LO04 CHZ broke the speed limit by 3.4 mph.
+Vehicle LO04 CHZ broke the speed limit by 2.1 mph.
+Vehicle QW04 SQU broke the speed limit by 10.6 mph.
+Vehicle R815 FII broke the speed limit by 3.9 mph.
