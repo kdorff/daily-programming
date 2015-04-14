@@ -18,13 +18,13 @@ class Machine {
     /** The current tape, key is tape index, value is single character. */
     Map<Integer, String> tape
     /** The defined transitions. */
-    List<Transition> transitions
+    Map<String, Transition> transitions
 
     /**
      * Create a state machine based on the input file.
      */
     public Machine(File inputFile) {
-        transitions = []
+        transitions = [:]
         position = 0
         int index = 0
         tape = [:]
@@ -56,7 +56,7 @@ class Machine {
                     // file
                     def transition = Transition.create(line)
                     if (transition) {
-                        transitions << transition
+                        transitions[transition.mapKey] = transition
                     } else {
                         println "Error parsing transition line '${line}'"
                     }
@@ -84,15 +84,15 @@ class Machine {
         while (state != endState) {
             //print "."
             String tapeAtPosition = readTape()
-            Transition t = findTransition(state, tapeAtPosition)
-            if (!t) {
+            Transition transition = transitions["${state}:${tapeAtPosition}"]
+            if (!transition) {
                 print "ERROR: Could not find a transition from state=${state} "
                 println "char=${tapeAtPosition}"
                 break
             }
-            state = t.endState
-            writeTape(t.endValue)
-            position += t.direction
+            state = transition.endState
+            writeTape(transition.endValue)
+            position += transition.direction
         }
         // Display end state
         println this
@@ -113,27 +113,6 @@ class Machine {
      */
     def writeTape(String setChar) {
         tape[position] = setChar
-    }
-
-    /**
-     * Given the current state and value of the tape at the current
-     * position, find the transition that machines the current.
-     * @param currentState the current state
-     * @param currentValue the current value of the tape at the current position
-     * @return Transition the next transition (or null if no matching 
-     * transition was found.)
-     */
-    Transition findTransition(currentState, currentValue) {
-        Transition result = null
-        for (Transition t in transitions) {
-            if (currentState == t.startState) {
-                if (t.initialValue == currentValue) {
-                    result = t
-                    break
-                }
-            }
-        }
-        result
     }
 
     /**
@@ -177,6 +156,10 @@ class Transition {
     String endState
     String endValue
     int direction
+
+    String getMapKey() {
+        "${startState}:${initialValue}"
+    }
 
     /**
      * Read the description of the transition and create a
