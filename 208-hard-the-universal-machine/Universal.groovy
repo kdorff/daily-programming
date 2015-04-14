@@ -1,5 +1,6 @@
-def m = new Machine('input-binary.txt' as File)
-m.execute()
+new Machine('input.txt' as File).execute()
+new Machine('input-morse.txt' as File).execute()
+new Machine('input-binary.txt' as File).execute()
 
 /**
  * A state machine class.
@@ -26,43 +27,41 @@ class Machine {
     public Machine(File inputFile) {
         transitions = [:]
         position = 0
-        int index = 0
         tape = [:]
-        inputFile.eachLine { line ->
-            if (line.startsWith('#') || line.trim() == "") {
-                // Skip comments and blank lines
-                return
-            }
-            switch (index++) {
-                // Configure the state machine
-                case 0:
-                    alphabet = line.collect { it }
-                    break
-                case 1:
-                    states = line.split(" ") as Set
-                    break
-                case 2:
-                    state = line
-                    break
-                case 3:
-                    endState = line
-                    break
-                case 4:
-                    readInitialTape(line)
-                    position = 0
-                    break
-                default:
-                    // Read the transitions for the rest of the
-                    // file
-                    def transition = Transition.create(line)
-                    if (transition) {
-                        transitions[transition.mapKey] = transition
-                    } else {
-                        println "Error parsing transition line '${line}'"
-                    }
-                    break
+
+        inputFile.withReader { reader ->
+            alphabet = nextLine(reader).collect { it }
+            states = nextLine(reader).split(" ") as Set
+            state = nextLine(reader)
+            endState = nextLine(reader)
+            readInitialTape(nextLine(reader))
+            def line = nextLine(reader)
+            while (line != null) {
+                // Read the transitions for the rest of the file
+                def transition = Transition.create(line)
+                if (transition) {
+                    transitions[transition.mapKey] = transition
+                } else {
+                    println "Error parsing transition line '${line}'"
+                }
+                line = nextLine(reader)
             }
         }
+    }
+
+    /**
+     * Read the next line from the reader, skipping "#" comment lines.
+     */
+    String nextLine(reader) {
+        String result
+        while (true) {
+            result = reader.readLine()
+            if (result == null || !result.startsWith('#')) {
+                // Found a returnable line
+                break
+            }
+        }
+        result
     }
 
     /**
@@ -84,7 +83,8 @@ class Machine {
         while (state != endState) {
             //print "."
             String tapeAtPosition = readTape()
-            Transition transition = transitions["${state}:${tapeAtPosition}"]
+            Transition transition = transitions[
+                Transition.mapKeyFor(state, tapeAtPosition)]
             if (!transition) {
                 print "ERROR: Could not find a transition from state=${state} "
                 println "char=${tapeAtPosition}"
@@ -151,15 +151,16 @@ class Machine {
 class Transition {
     /** Regex pattern for parsing transitions from the input file. */
     static transitionPattern = /^(.+) (.+) = (.+) (.+) ([<>])$/
+    /** Transition start value. */
     String startState
+    /** Transition at a specific tape value. */
     String initialValue
+    /** New state after transition. */
     String endState
+    /** New tape value after transition. */
     String endValue
+    /** Direction to move read head after transition, '<' or '>'. */
     int direction
-
-    String getMapKey() {
-        "${startState}:${initialValue}"
-    }
 
     /**
      * Read the description of the transition and create a
@@ -180,5 +181,19 @@ class Transition {
             result.direction = directionM == "<" ? -1 : 1
         }
         result
+    }
+
+    /**
+     * Transitions are stored using a map. Key for a given state/tapeValue.
+     */
+    static String mapKeyFor(String state, String tapeValue) {
+        "${state}:${tapeValue}"
+    }
+
+    /**
+     * Transitions are stored using a map. Key for the current Transition.
+     */
+    String getMapKey() {
+        mapKeyFor(startState, initialValue)
     }
 }
