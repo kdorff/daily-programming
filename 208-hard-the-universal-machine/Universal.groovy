@@ -1,13 +1,38 @@
-new Machine('input.txt' as File).execute()
-new Machine('input-morse.txt' as File).execute()
-new Machine('input-binary.txt' as File).execute()
+def inputs = [
+    [file: 'input.txt' as File,
+     pre:  '01100110' + '\n' + 
+           '↑       ',
+     post: '_10011010_' + '\n' + 
+           ' ↑        '
+    ],
+    [file: 'input-morse.txt' as File,
+     pre:  '/././../.../..../k' + '\n' + 
+           '↑                 ',
+     post: '_________________k/././../.../..../' + '\n' + 
+           '|                 ^                '
+    ],
+    [file: 'input-binary.txt' as File,
+     pre:  '0110100#' + '\n' +
+           '↑       ',
+     post: '0110100#0110100' + '\n' +
+           '|       ^      '
+    ]
+]
+
+inputs.each { input ->
+    def m = Machine.create(input.file as File)
+    assert input.pre == m.toString()
+    m.execute()
+    assert input.post == m.toString()
+    println m.toString()
+}
 
 /**
  * A state machine class.
  */
 class Machine {
     /** The valid alphabet. */
-    List<String> alphabet
+    Set<String> alphabet
     /** The valid states. */
     Set<String> states
     /** The current state. */
@@ -24,35 +49,42 @@ class Machine {
     /**
      * Create a state machine based on the input file.
      */
-    public Machine(File inputFile) {
-        transitions = [:]
-        position = 0
-        tape = [:]
+    static Machine create(File inputFile) {
+        Machine m = new Machine()
+        m.transitions = [:]
+        m.position = 0
+        m.tape = [:]
 
+        def line
         inputFile.withReader { reader ->
-            alphabet = nextLine(reader).collect { it }
-            states = nextLine(reader).split(" ") as Set
-            state = nextLine(reader)
-            endState = nextLine(reader)
-            readInitialTape(nextLine(reader))
-            def line = nextLine(reader)
+            m.alphabet = nextLine(reader).collect { it } as Set
+            m.alphabet << '_'
+            m.states = nextLine(reader).split(" ") as Set
+            m.state = nextLine(reader)
+            m.endState = nextLine(reader)
+            nextLine(reader).eachWithIndex { String letter, int index ->
+                m.tape[index] = letter
+            }
+
+            line = nextLine(reader)
             while (line != null) {
                 // Read the transitions for the rest of the file
                 def transition = Transition.create(line)
                 if (transition) {
-                    transitions[transition.mapKey] = transition
+                    m.transitions[transition.mapKey] = transition
                 } else {
-                    println "Error parsing transition line '${line}'"
+                    System.err.println "Error parsing transition line '${line}'"
                 }
                 line = nextLine(reader)
             }
         }
+        m.validate() ? m : null
     }
 
     /**
      * Read the next line from the reader, skipping "#" comment lines.
      */
-    String nextLine(reader) {
+    static String nextLine(reader) {
         String result
         while (true) {
             result = reader.readLine()
@@ -65,12 +97,20 @@ class Machine {
     }
 
     /**
-     * Read the initial value of the tape, populate the tape map.
+     * Validate the initial state of the machine.
      */
-    def readInitialTape(String line) {
-        line.eachWithIndex { String letter, int index ->
-            tape[index] = letter
+    boolean validate() {
+        def result = true
+        result &= states.contains(state)
+        result &= states.contains(endState)
+        result &= position == 0
+        tape.values().each { letter ->
+            result &= alphabet.contains(letter)
         }
+        transitions.values().each { transition ->
+            result &= transition.validate(this)
+        }
+        result
     }
 
     /**
@@ -78,24 +118,19 @@ class Machine {
      */
     def execute() {
         // Display start state
-        println this
-        println "... processing"
         while (state != endState) {
-            //print "."
             String tapeAtPosition = readTape()
             Transition transition = transitions[
                 Transition.mapKeyFor(state, tapeAtPosition)]
             if (!transition) {
-                print "ERROR: Could not find a transition from state=${state} "
-                println "char=${tapeAtPosition}"
+                System.err.print "ERROR: Could not find a transition from state=${state} "
+                System.err.println "char=${tapeAtPosition}"
                 break
             }
             state = transition.endState
             writeTape(transition.endValue)
             position += transition.direction
         }
-        // Display end state
-        println this
     }
 
     /**
@@ -180,6 +215,19 @@ class Transition {
             result.endValue = endValueM
             result.direction = directionM == "<" ? -1 : 1
         }
+        result
+    }
+
+    /**
+     * Validate the values of the Transition based on the possible
+     * values defined in the machine the transition belongs to.
+     */
+    boolean validate(Machine m) {
+        def result = true
+        result &= m.states.contains(startState)
+        result &= m.alphabet.contains(initialValue)
+        result &= m.states.contains(endState)
+        result &= m.alphabet.contains(endValue)
         result
     }
 

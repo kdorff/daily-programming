@@ -7,7 +7,7 @@ Mov
 #end state
 OK
 # Tape
-01100100
+01100110
 # Transition functions
 Mov 0 = Mov 0 >
 Mov 1 = Mov 1 >
