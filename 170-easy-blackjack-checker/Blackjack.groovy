@@ -79,18 +79,9 @@ class Hand {
 }
 
 /**
- * Class to represent one of single players card.
- */
-@ToString(excludes=['value'])
-class Card {
-    String name
-    int value
-}
-
-/**
  * Enum for the cards.
  */
-enum Cards {
+enum Card {
     Two(2),     Three(3),   Four(4),
     Five(5),    Six(6),     Seven(7),
     Eight(8),   Nine(9),    Ten(10),
@@ -98,7 +89,7 @@ enum Cards {
     Ace(1)
 
     int value
-    private Cards(int value) {
+    private Card(int value) {
       this.value = value
    }
 }
@@ -115,7 +106,7 @@ class BlackjackGameUtil {
     static {
         // Build a regex to find cards in the input
         def buildPattern = new StringBuilder('(')
-        buildPattern << Cards.values()*.toString().join('|')
+        buildPattern << Card.values()*.toString().join('|')
         buildPattern << ')'
         CARD_PATTERN = Pattern.compile(buildPattern.toString())
     }
@@ -213,7 +204,7 @@ class BlackjackGameUtil {
         int sum = 0
         int numAces = 0
         cards.each { Card card ->
-            if (card == Cards.Ace) {
+            if (card == Card.Ace) {
                 numAces++
             }
             sum += card.value
@@ -235,10 +226,7 @@ class BlackjackGameUtil {
     static List<Card> parseCards(String cardsDesc) {
         def cards = []
         cardsDesc.findAll(CARD_PATTERN) { whole, cardName ->
-            def card = new Card()
-            card.name = cardName
-            card.value = Cards.valueOf(cardName).value
-            cards << card
+            cards << Card.valueOf(cardName)
         }
         cards
     }
