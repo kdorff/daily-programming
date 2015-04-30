@@ -35,7 +35,7 @@ Madge: Two of Hearts, Three of Clubs, Three of Hearts, Five of Hearts, Four of H
 
 inputs.each { input ->
     // Try
-    BlackjackGame game = BlackjackGameUtil.parseGame(input).describe()
+    BlackjackGame game = BlackjackGameUtil.playGame(input).describe()
 }
 
 /**
@@ -88,21 +88,25 @@ class Card {
 }
 
 /**
+ * Enum for the cards.
+ */
+enum Cards {
+    Two(2),     Three(3),   Four(4),
+    Five(5),    Six(6),     Seven(7),
+    Eight(8),   Nine(9),    Ten(10),
+    Jack(10),   Queen(10),  King(10),
+    Ace(1)
+
+    int value
+    private Cards(int value) {
+      this.value = value
+   }
+}
+
+/**
  * Utility class to parse a game from ascii and score the game.
  */
 class BlackjackGameUtil {
-    /**
-     * The card name (as found in the input) to the value. The exception
-     * here is 'Ace' which can have a value of 1 or 11. This special case
-     * is handled during the scoring phase in parseGame(String).
-     */
-    static CARD_TO_VALUE = [
-        'Two':   2,   'Three': 3,   'Four':  4,
-        'Five':  5,   'Six':   6,   'Seven': 7,
-        'Eight': 8,   'Nine':  9,   'Ten':   10,
-        'Jack':  10,  'Queen': 10,  'King':  10,
-        'Ace':   1,
-    ]
     /**
      * Create the pattern to find the cards in the input by knowing
      * what cards to expect, namely the keys for CARD_TO_VALUE.
@@ -111,7 +115,7 @@ class BlackjackGameUtil {
     static {
         // Build a regex to find cards in the input
         def buildPattern = new StringBuilder('(')
-        buildPattern << CARD_TO_VALUE.keySet().join('|')
+        buildPattern << Cards.values()*.toString().join('|')
         buildPattern << ')'
         CARD_PATTERN = Pattern.compile(buildPattern.toString())
     }
@@ -122,54 +126,67 @@ class BlackjackGameUtil {
      * @param input the multi-line String that contains the input for the game
      * @param BlackjackGame the BlackjackGame object fully populated
      */
-    static BlackjackGame parseGame(String input) {
+    static BlackjackGame playGame(String input) {
         def game = new BlackjackGame()
-        game.hands = []
-        // Parse the hands from the input
-        input.split('[\n\r]').eachWithIndex { line, i ->
-            if (i) {
-                // Skip the forst line of input, not necessary
-                // For the rest of the lines, parse the input
-                game.hands << parseHand(line)
-            }
-        }
+        parseGame(game, input)
         findWinners(game)
         game
     }
 
     /**
-     * Find the winner(s) of the game. A five or more card hand <= 21
-     * automatically wins. After that, the highest hand(s) <= 21 win.
-     * @param game the game to be scored
+     * Parse the game input into the newly created game object.
+     * @param game the game object
+     * @param input the multi-line String that contains the input for the game
      */
-    def findWinners(BlackjackGame game) {
-        // Score the game
-        game.winnerScore = 0
-        game.winners = []
-        game.hands.each { hand ->
-            // Inspect all of the hands
-            // println hand
-            def handScore = hand.handValue
-            if (handScore <= 21) {
-                if (hand.cards.size() >= 5) {
-                    if (!game.fiveCardTrick) {
-                        // Previous winner was not a 5-card, replace
-                        game.winners.clear()
-                    }
-                    game.fiveCardTrick = true
-                    game.winners << hand.playerName
-                    game.winnerScore = Math.max(handScore, game.winnerScore)
-                } else if (!game.fiveCardTrick && handScore >= game.winnerScore) {
-                    if (handScore > game.winnerScore) {
-                        // Remove the previous high scoring player as this
-                        // score is higher than the previous
-                        game.winners.clear()
-                    }
-                    game.winnerScore = handScore
-                    game.winners << hand.playerName
+    static void parseGame(BlackjackGame game, String input) {
+        game.with {
+            hands = []
+            // Parse the hands from the input
+            input.split('[\n\r]').eachWithIndex { line, i ->
+                if (i) {
+                    // Skip the forst line of input, not necessary
+                    // For the rest of the lines, parse the input
+                    game.hands << parseHand(line)
                 }
             }
-        }        
+        }
+    }
+
+    /**
+     * Find the winner(s) of the game. A five or more card hand <= 21
+     * automatically wins. After that, the highest hand(s) <= 21 win.
+     * @param game the game object
+     */
+    static void findWinners(BlackjackGame game) {
+        // Score the game
+        game.with {
+            winnerScore = 0
+            winners = []
+            hands.each { hand ->
+                // Inspect all of the hands
+                // println hand
+                def handScore = hand.handValue
+                if (handScore <= 21) {
+                    if (hand.cards.size() >= 5) {
+                        if (!fiveCardTrick) {
+                            // Previous winner was not a 5-card, replace
+                            winners.clear()
+                        }
+                        fiveCardTrick = true
+                        winners << hand.playerName
+                        winnerScore = Math.max(handScore, winnerScore)
+                    } else if (!fiveCardTrick && handScore >= winnerScore) {
+                        if (handScore > winnerScore) {
+                            // Remove the previous high scoring player as this
+                            // score is higher than the previous
+                            winners.clear()
+                        }
+                        winnerScore = handScore
+                        winners << hand.playerName
+                    }
+                }
+            }        
+        }
     }
 
     /**
@@ -196,7 +213,7 @@ class BlackjackGameUtil {
         int sum = 0
         int numAces = 0
         cards.each { Card card ->
-            if (card.name == 'Ace') {
+            if (card == Cards.Ace) {
                 numAces++
             }
             sum += card.value
@@ -220,7 +237,7 @@ class BlackjackGameUtil {
         cardsDesc.findAll(CARD_PATTERN) { whole, cardName ->
             def card = new Card()
             card.name = cardName
-            card.value = CARD_TO_VALUE[cardName]
+            card.value = Cards.valueOf(cardName).value
             cards << card
         }
         cards
