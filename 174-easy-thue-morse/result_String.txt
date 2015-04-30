@@ -1,0 +1,36 @@
+String
+----------
+1:0
+2 took 83ms
+3 took 0ms
+4 took 1ms
+5 took 0ms
+6 took 1ms
+7 took 1ms
+8 took 0ms
+9 took 1ms
+10 took 2ms
+11 took 4ms
+12 took 7ms
+13 took 38ms
+14 took 46ms
+15 took 45ms
+16 took 19ms
+17 took 9ms
+18 took 12ms
+19 took 30ms
+20 took 29ms
+21 took 76ms
+22 took 221ms
+23 took 1315ms
+24 took 2222ms
+25 took 3871ms
+26 took 16129ms
+27 took 28947ms
+Caught: java.lang.OutOfMemoryError: GC overhead limit exceeded
+java.lang.OutOfMemoryError: GC overhead limit exceeded
+    at Thue_String.thueMorse(Thue_String.groovy:14)
+    at Thue_String$thueMorse.callCurrent(Unknown Source)
+    at Thue_String.run(Thue_String.groovy:7)
+[Finished in 650.6s with exit code 1]
+

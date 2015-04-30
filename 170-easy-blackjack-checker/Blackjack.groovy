@@ -133,6 +133,16 @@ class BlackjackGameUtil {
                 game.hands << parseHand(line)
             }
         }
+        findWinners(game)
+        game
+    }
+
+    /**
+     * Find the winner(s) of the game. A five or more card hand <= 21
+     * automatically wins. After that, the highest hand(s) <= 21 win.
+     * @param game the game to be scored
+     */
+    def findWinners(BlackjackGame game) {
         // Score the game
         game.winnerScore = 0
         game.winners = []
@@ -143,6 +153,7 @@ class BlackjackGameUtil {
             if (handScore <= 21) {
                 if (hand.cards.size() >= 5) {
                     if (!game.fiveCardTrick) {
+                        // Previous winner was not a 5-card, replace
                         game.winners.clear()
                     }
                     game.fiveCardTrick = true
@@ -158,8 +169,7 @@ class BlackjackGameUtil {
                     game.winners << hand.playerName
                 }
             }
-        }
-        game
+        }        
     }
 
     /**

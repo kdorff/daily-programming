@@ -1,0 +1,36 @@
+1:0
+2 took 22ms
+3 took 0ms
+4 took 0ms
+5 took 1ms
+6 took 1ms
+7 took 0ms
+8 took 1ms
+9 took 5ms
+10 took 4ms
+11 took 8ms
+12 took 25ms
+13 took 24ms
+14 took 28ms
+15 took 20ms
+16 took 12ms
+17 took 11ms
+18 took 14ms
+19 took 34ms
+20 took 32ms
+21 took 72ms
+22 took 141ms
+23 took 308ms
+24 took 537ms
+25 took 1126ms
+26 took 2390ms
+27 took 3991ms
+28 took 7993ms
+29 took 17605ms
+30 took 33600ms
+Caught: java.lang.OutOfMemoryError: Java heap space
+java.lang.OutOfMemoryError: Java heap space
+    at Thue_StringBuilder.thueMorse(Thue_StringBuilder.groovy:14)
+    at Thue_StringBuilder$thueMorse.callCurrent(Unknown Source)
+    at Thue_StringBuilder.run(Thue_StringBuilder.groovy:7)
+[Finished in 83.6s with exit code 1]
